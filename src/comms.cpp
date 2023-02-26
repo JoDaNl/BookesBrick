@@ -15,30 +15,37 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <preferences.h>
+#include <ESP32ping.h>
+
 #include "monitor.h"
 #include "comms.h"
 #include "i2c_lcd_16x2.h"
 #include "actuators.h"
 
+#define COMMS_WM_RESET  false
+#define COMMS_WM_DEBUG  true
+
 #define BBPREFS         "bbbrick"
 #define BBAPIKEYID      "bbApiKey"
 #define BBAPIKEYLABEL   "BB API-key"
 #define BBPORTALTIMEOUT 90
+#define BBDRDTIMEOUT    5
+#define BBPINGURL       "8.8.8.8"
 
 // GLOBALS
 xQueueHandle communicationQueue = NULL;
 
 // module scope
 static WiFiManager wm;
-static bool WMsaveConfig = false;
+static bool wmSaveConfig = false;
 
 
 // Callback function for WiFiManager
 static void saveWMConfigCallback()
 {
-  printf("[COMMS] WiFiManager callback funtion\n");
+  printf("[COMMS] WiFiManager callback : save config\n");
 
-  WMsaveConfig = true;
+  wmSaveConfig = true;
 }
 
 // ============================================================================
@@ -54,7 +61,8 @@ static void communicationTask(void *arg)
   static uint64_t chipId;
   static uint32_t next_request_ms;
   static uint16_t next_request_sec;
-
+  static uint8_t qMesg;
+  
   // TEMPERATURE
   static bool temperature_valid = false;
   static uint16_t temperature; // TODO : support for multiple temperatures
@@ -65,7 +73,7 @@ static void communicationTask(void *arg)
   // static const IPAddress ping_ip(8, 8, 8, 8);
 
   // PREFERENCES
-  Preferences prefs;
+  static Preferences prefs;
 
   // BIERBOT
   static String apiKey;
@@ -82,58 +90,77 @@ static void communicationTask(void *arg)
   // JSON
   static StaticJsonDocument<512> jsonResponseDoc;
 
-  // for display task
+  // Message for display task
   displayQMesg.type = e_wifiInfo;
   displayQMesg.index = 0;
-  displayQMesg.duration = 5; // seconds
+  displayQMesg.duration = 10; // seconds
 
-  // get MAC addres, as unique ID
+  // Get MAC addres as unique ID for BB URL
   chipId = ESP.getEfuseMac();
 
-  // WIFIMANAGER CUSTOM PARAMETERS
 
-  // Uncomment next line to fully reset WifiManager settings
-   wm.resetSettings();
+  // ===========================================================
+  // WIFIMANAGER
+  // ===========================================================
 
-  // silence WiFiManeger...to chatty at startup
-  // wm.setDebugOutput(false);
+  // Optionally reset WifiManager settings
+#if (COMM_WM_RESET == true)
+    printf("[COMMS] RESETTING ALL WIFIMANAGER SETTINGS!!!\n");
+    wm.resetSettings();
+#endif
 
-  // read current value from 'preferences' (read only mode)
-  prefs.begin(BBPREFS, true);
+  // Optionally silence WiFiManager...to chatty at startup
+  wm.setDebugOutput(COMMS_WM_DEBUG);
+#if (COMMS_WM_DEBUG == true)  
+    printf("[COMMS] WIFIMANAGER DEBUG INFO ON\n");
+  wm.debugPlatformInfo();
+  wm.debugSoftAPConfig();
+#endif
+
+  // read 'preferences'
+  prefs.begin(BBPREFS, true);               // read only mode
   apiKey = prefs.getString(BBAPIKEYID, ""); // leave default empty
   printf("[COMMS] apiKey read from preferences=%s\n", apiKey.c_str());
   prefs.end();
 
-  // add custom "BierBot Bricks API Key" parameter to WiFiManager, max length = 32
+  // ===========================================================
+  // START WIFI
+  // ===========================================================
+
+  // Add custom "BierBot Bricks API Key" parameter to WiFiManager, max length = 32
   static WiFiManagerParameter bbApiKey(BBAPIKEYID, BBAPIKEYLABEL, apiKey.c_str(), 32);
   wm.addParameter(&bbApiKey);
   wm.setSaveConfigCallback(saveWMConfigCallback);
 
-  // DOUBLE RESET DETECTION
-  drd = new DoubleResetDetector(BBPORTALTIMEOUT, 0); // TODO : static declaraion (not pointer..so no NEW required)
+  // Double Reset detection
+  drd = new DoubleResetDetector(BBDRDTIMEOUT, 0); // TODO : static declaraion (not pointer..so no NEW required)
 
   if (drd->detectDoubleReset())
   {
+    // Start configuration portal
     printf("\n\n[COMMS] Double Reset Detected...\n");
-    printf("\n\n[COMMS] ...starting config portal\n");
+    printf("[COMMS] ...starting config portal\n\n");
 
-    // Send to display
+    // Send info to display-task
     strcpy(displayQMesg.data.wifiInfo, (char *)"Config Mode");
     xQueueSend(displayQueue, &displayQMesg, 0);
 
+    wm.setConfigPortalBlocking(false);
+    wm.setConfigPortalTimeout(BBPORTALTIMEOUT);    
+
     // Start the config portal
     status = wm.startConfigPortal(CFG_COMM_SSID_PORTAL);
-    printf("[COMMS] Portal closed. Status=%d\n", status);
+    printf("[COMMS] Portal closed. Status=%d\n\n", status);
   }
   else
   {
     printf("[COMMS] WiFiManager Autoconnect..");
-    bool wm_err = wm.autoConnect(CFG_COMM_SSID_PORTAL);
-    printf("[COMMS] WiFimanage autoconnect status=%d\n", wm_err);
+    status = wm.autoConnect(CFG_COMM_SSID_PORTAL);
+    printf("[COMMS] WiFimanager autoconnect status=%d\n", status);
   }
 
 
-  if (WMsaveConfig)
+  if (wmSaveConfig)
   {
     // Save custom parameter to 'preferences'
     apiKey = bbApiKey.getValue();
@@ -144,15 +171,31 @@ static void communicationTask(void *arg)
     prefs.end();
   }
 
+  // ===========================================================
+  // CHECK FOR INTERNET CONNECTION
+  // ===========================================================
+
+  // At this point in the coe we should have WiFi connection...check if we can reach the internet
+  status = Ping.ping(BBPINGURL, 3);
+
+  if (status)
+  {
+    printf("[COMMS] We have internet connection !!!\n");
+  }
+  else
+  {
+    printf("[COMMS] We have NO internet connection !!!\n");
+  }
+
 
   // ===========================================================
-  // START WIFI
-  // WiFi.mode(WIFI_STA);
-  // WiFi.hostname("bookusbrick"); // TODO : make configurable
-  // WiFi.begin();
+  // TASK LOOP
+  // ===========================================================
 
   // initial start-up delay...it's fancy to be late :-)
   next_request_sec = 15;
+
+  printf("[COMMS] Entering task loop...\n");
 
   // TASK LOOP
   while (true)
@@ -260,8 +303,6 @@ static void communicationTask(void *arg)
             else
             {
               // No error...so we trigger the monitor task
-              uint8_t qMesg;
-
               qMesg = 0;
               xQueueSend(monitorQueue, &qMesg, 0);
             }
@@ -335,8 +376,9 @@ static void communicationTask(void *arg)
       }
     }
 
-    // Doulbe Reset Detector must be called regularly
+    // Double Reset Detector & WiFiManager must be called regularly
     drd->loop();
+    wm.process();
 
     // loop delay
     vTaskDelay(1000 / portTICK_RATE_MS);
