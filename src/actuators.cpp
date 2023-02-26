@@ -3,16 +3,12 @@
 //
 
 #include "config.h"
-
 #include <Arduino.h>
 #include "actuators.h"
 #include "i2c_lcd_16x2.h"
 
-// Queues
+// GLOBALS
 xQueueHandle actuatorsQueue = NULL;
-
-// Actuators task
-static TaskHandle_t actuatorsTaskHandle = NULL;
 
 // ============================================================================
 // ACTUATORS TASK
@@ -183,6 +179,8 @@ static void actuatorsTask(void *arg)
 
 void initActuators(void)
 {
+  static TaskHandle_t actuatorsTaskHandle = NULL;
+
   printf("[ACTUATORS] init\n");
 
   actuatorsQueue = xQueueCreate(5, sizeof(actuatorQueueItem_t));

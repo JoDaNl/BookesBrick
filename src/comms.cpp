@@ -2,12 +2,12 @@
 // comms.cpp
 //
 
-#include "config.h"
 #include <Arduino.h>
+#include "config.h"
 
-// the following defines MUST be defined BEFORE teh DRD include file!
+// the following defines MUST be defined BEFORE the DRD include file!
 #define USE_SPIFFS false
-#define USE_LITTEFS true
+#define USE_LITTEFS false
 #define ESP_DRD_USE_EEPROM true
 #include <ESP_DoubleResetDetector.h>
 
@@ -23,21 +23,18 @@
 #define BBPREFS         "bbbrick"
 #define BBAPIKEYID      "bbApiKey"
 #define BBAPIKEYLABEL   "BB API-key"
-#define BBSSIDCONFIG    "BOOKUSBRICK"
 #define BBPORTALTIMEOUT 90
+
+// GLOBALS
+xQueueHandle communicationQueue = NULL;
 
 // module scope
 static WiFiManager wm;
 static bool WMsaveConfig = false;
 
-// GLOBALS
-xQueueHandle communicationQueue = NULL;
-
-// Communication task
-static TaskHandle_t communicationTaskHandle = NULL;
 
 // Callback function for WiFiManager
-void saveWMConfigCallback()
+static void saveWMConfigCallback()
 {
   printf("[COMMS] WiFiManager callback funtion\n");
 
@@ -96,7 +93,7 @@ static void communicationTask(void *arg)
   // WIFIMANAGER CUSTOM PARAMETERS
 
   // Uncomment next line to fully reset WifiManager settings
-  // wm.resetSettings();
+   wm.resetSettings();
 
   // silence WiFiManeger...to chatty at startup
   // wm.setDebugOutput(false);
@@ -131,7 +128,7 @@ static void communicationTask(void *arg)
   else
   {
     printf("[COMMS] WiFiManager Autoconnect..");
-    bool wm_err = wm.autoConnect(BBSSIDCONFIG);
+    bool wm_err = wm.autoConnect(CFG_COMM_SSID_PORTAL);
     printf("[COMMS] WiFimanage autoconnect status=%d\n", wm_err);
   }
 
@@ -346,8 +343,11 @@ static void communicationTask(void *arg)
   }
 };
 
+
 void initCommmunication(void)
 {
+  static TaskHandle_t communicationTaskHandle = NULL;
+
   printf("[COMMS] init\n");
 
   // queue is only 1 deep...

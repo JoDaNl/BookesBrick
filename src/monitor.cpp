@@ -1,5 +1,5 @@
 //
-//  actuators.cpp
+//  monitor.cpp
 //
 
 #include "config.h"
@@ -8,7 +8,7 @@
 #include "monitor.h"
 #include "i2c_lcd_16x2.h"
 
-// Queues
+// Queue
 xQueueHandle monitorQueue = NULL;
 
 // Actuators task
