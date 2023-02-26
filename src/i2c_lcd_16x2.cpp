@@ -95,7 +95,7 @@ static void displayTask(void *arg)
         lcd.setCursor(0, 0);
         lcd.printf("WIFI:%s", qMesg.data.wifiInfo);
 
-        vTaskDelay(qMesg.duration / portTICK_RATE_MS);
+        vTaskDelay(qMesg.duration * 1000 / portTICK_RATE_MS);
         lcdHelper();
         break;
 
