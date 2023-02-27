@@ -495,6 +495,7 @@ static void communicationTask(void *arg)
     drd->loop();
     wm.process();
 
+
     // printf("[COMMS]     nextTempRequestSec=%3d   nextLCDRequestSec=%3d\n", nextTempRequestSec, nextLCDRequestSec);
 
     // loop delay
