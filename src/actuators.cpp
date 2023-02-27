@@ -141,7 +141,7 @@ static void actuatorsTask(void *arg)
 
     if (( onDelaySec0 > 0) || (offDelaySec0 > 0) )
     {
-      printf("[ACTUATORS] onDelaySec0=%d - offDelaySec0=%d\n", onDelaySec0, offDelaySec0);
+      // printf("[ACTUATORS] onDelaySec0=%d - offDelaySec0=%d\n", onDelaySec0, offDelaySec0);
     }
 
 
@@ -204,7 +204,7 @@ static void actuatorsTask(void *arg)
 
     if (( onDelaySec1 > 0) || (offDelaySec1 > 0) )
     {
-      printf("[ACTUATORS] onDelaySec1=%d - offDelaySec1=%d\n", onDelaySec1, offDelaySec1);
+      // printf("[ACTUATORS] onDelaySec1=%d - offDelaySec1=%d\n", onDelaySec1, offDelaySec1);
     }
 
   }

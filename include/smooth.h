@@ -57,8 +57,8 @@ public:
   {
     int median;
     long deviation;
-    long sum_samples;
-    int num_valid_samples;
+    long sumSamples;
+    int numValidSamples;
 
     switch (_state)
     {
@@ -98,8 +98,8 @@ public:
       median = _samplesSorted[SAMPLE_WINDOW / 2];
 
       // Average all samples. skipping outlyers
-      sum_samples = 0;
-      num_valid_samples = 0;
+      sumSamples = 0;
+      numValidSamples = 0;
       for (int i = 0; i < SAMPLE_WINDOW; i++)
       {
         deviation = _samples[i] - median;
@@ -107,16 +107,16 @@ public:
         // calculate sum & outlyer detection
         if (abs(deviation) < _maxDeviation)
         {
-          sum_samples += _samples[i];
-          num_valid_samples++;
+          sumSamples += _samples[i];
+          numValidSamples++;
         }
       }
 
       // Compute average of valid samples
-      if (num_valid_samples > 0)
+      if (numValidSamples > 0)
       {
         _outputValid = true;
-        _value = sum_samples / num_valid_samples;
+        _value = sumSamples / numValidSamples;
       }
       else
       {
@@ -125,23 +125,26 @@ public:
       }
 
       // printf("median        = %d\n", median);
-      // printf("valid_samples = %d\n", num_valid_samples);
+      // printf("valid_samples = %d\n", numValidSamples);
       // printf("_value        = %d\n", _value);
     }
     break;
     }
   }
  
+  // Set maximum deviation from median
   void setMaxDeviation(int maxDeviation)
   {
     _maxDeviation = maxDeviation;
   }
 
+  // returns true when getValue has a valid return
   bool isValid(void)
   {
     return _outputValid;
   };
 
+  // get Smoothed output
   int getValue(void)
   {
     return _value;
