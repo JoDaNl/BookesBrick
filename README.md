@@ -21,11 +21,12 @@ I planned to use the BierBot system (as a starter) for an fermentation temperatu
   * using BierBot LCD-API (maybe)
 * Configurable using a single C include file
 
-### Future
+### Future extentions, ideas and thoughts
 * Fallback temperature control in case of being offline
-* Support for NTC based temperature sensors 
+* Support for NTC based temperature sensors
 * Add beeper
 * Would like to see PWM support for heating elements (using SSR)...(note: my boiling kettle has two heating elements...so I would control both with 1 PWM value)
+* Add support for other display types
 
 ### Pictures
 

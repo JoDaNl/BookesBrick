@@ -14,6 +14,8 @@
 #include "smooth.h"
 
 // Temperature sensor
+#define SMOOTH_SAMPLES  7 // must be odd number
+
 
 // Queues
 xQueueHandle sensorsQueue = NULL;
@@ -35,11 +37,14 @@ void sensorsTask(void *arg)
 
   static OneWire oneWire(CFG_TEMP_PIN);
   static DallasTemperature sensors(&oneWire);
-  static Smooth smooth;
+  static Smooth<SMOOTH_SAMPLES> smooth;
+
+  smooth.setMaxDeviation(10); // 1 degree
 
   qMesg.type = e_temperature;
   qMesg.index = 0;
   qMesg.duration = 0; // 0=display forever
+
 
   // set-up DS18B20 temperature sensor(s)
   sensors.begin();
@@ -48,6 +53,7 @@ void sensorsTask(void *arg)
   // TODO : support for multiple sensors
   num_sensors = sensors.getDS18Count();
   printf("[SENSORS] Number of DS18B20 sensors found=%d\n", num_sensors);
+
 
   // TODO : support for NTC sensors
 
