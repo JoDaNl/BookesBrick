@@ -1,4 +1,4 @@
-# BookusBrick
+# BookesBrick
 [BierBot](https://bierbot.com/) compatible brewing and fermentation controller based upon an ESP32 board.
 
 This project is still in an early stage and I'm still developing code.
