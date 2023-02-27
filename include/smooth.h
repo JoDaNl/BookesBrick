@@ -131,7 +131,7 @@ public:
     break;
     }
   }
-
+ 
   void setMaxDeviation(int maxDeviation)
   {
     _maxDeviation = maxDeviation;
