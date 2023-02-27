@@ -31,8 +31,8 @@ I planned to use the BierBot system (as a starter) for an fermentation temperatu
 
 Some pictures of my prototype. Screen is showing (from left to right):
 * Current temperature
-* Placeholderof set-point temperature
-* On(line)/Offline status + blinking heartbeat
+* Placeholder for set-point temperature
+* On(line)/Off(line) status + blinking * (= heartbeat)
 * Cool (+compressor delay) / Heat
 
 ![LCD Display](pics/20230226_172245.jpg)

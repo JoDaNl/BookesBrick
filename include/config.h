@@ -17,6 +17,7 @@
 #define CFG_LCD_16x2_I2C        true
 
 //=============================================
+
 // Relay outputs
 #define CFG_RELAY0_PIN          GPIO_NUM_16
 #define CFG_RELAY0_ON_LEVEL     1
@@ -34,13 +35,18 @@
 
 //=============================================
 
-#define CFG_COMM_SSID_PORTAL    "BOOKUSBRICK"
-#define CFG_COMM_ONLINE_TIMEOUT 120
+#define CFG_COMM_USE_WIFIMANAGER    true
+#define CFG_COMM_USE_FIXEDCREDS     false
+#define CFG_COMM_CREDS_SSID         "bookesbeer"
+#define CFM_COMM_CREDS_PASSWD       "password"
 
-#define CFG_COMM_BBAPI_URL_BASE "https://bricks.bierbot.com/api/iot/v1"
-#define CFG_COMM_DEVICE_TYPE    "bookusbrick" 
-#define CFG_COMM_DEVICE_BRAND   "bookusbeer" 
-#define CFG_COMM_DEVICE_VERSION "0.1" 
+#define CFG_COMM_SSID_PORTAL        "BOOKESBRICK"
+#define CFG_COMM_ONLINE_TIMEOUT     120
+
+#define CFG_COMM_BBAPI_URL_BASE     "https://bricks.bierbot.com/api/iot/v1"
+#define CFG_COMM_DEVICE_TYPE        "bookusbrick" 
+#define CFG_COMM_DEVICE_BRAND       "bookusbeer" 
+#define CFG_COMM_DEVICE_VERSION     "0.1" 
 
 //=============================================
 

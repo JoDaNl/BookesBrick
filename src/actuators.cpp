@@ -36,16 +36,31 @@ static void actuatorsTask(void *arg)
   pinMode(CFG_RELAY0_PIN, OUTPUT);
   pinMode(CFG_RELAY1_PIN, OUTPUT);
 
-  // Set all actuator off
+  // Set all actuators off
   digitalWrite(CFG_RELAY0_PIN, !CFG_RELAY0_ON_LEVEL);
   digitalWrite(CFG_RELAY1_PIN, !CFG_RELAY1_ON_LEVEL);
 
+
+  // INIT DELAYS
+  // we also could start the task loop with all delays initially zero,
+  // however presetting them ensures a initial delay after boot.
+  // This prevent violation the delays in case of accidental boot-
+  // loops during code development or possible power-outages
+  onDelaySec0 = CFG_RELAY0_ON_DELAY;
+  onDelaySec1 = CFG_RELAY1_ON_DELAY;
+  offDelaySec0 = CFG_RELAY0_OFF_DELAY;
+  offDelaySec1 = CFG_RELAY0_OFF_DELAY;
+
+  // Task loop
   while (true)
   {
+    // get message from queue
     if (xQueueReceive(actuatorsQueue, &qMesg, 1000 / portTICK_RATE_MS) == pdTRUE)
     {
       printf("[ACTUATORS] received qMesg.number=%d - qMesg.onOff=%d\n", qMesg.number, qMesg.onOff);
 
+      // qMesg.number is the actuator=number
+      // qMesg.onOff is the deribed/new state of the actuator
       switch (qMesg.number)
       {
       case 0:
@@ -60,8 +75,16 @@ static void actuatorsTask(void *arg)
     }
 
     // ON-OFF DELAY 
+    // Actuators may have a pre-defined (see config.h) on and/or off delay
+    // when an actuator goes into off-state it immediately can be triggered to go into on-state 
+    // but then CFG_RELAY0_ON_DELAY time must must have been passed before the actuator is 
+    // actually switched on...the task will take care for the delayed-switch-on
+    // Similar is true for switching off.
+    // All delays are in seconds/loop-iterations
 
-    // ACTUATOR 0
+
+    // ACTUATOR 0 - Switch ON request
+
     if (actuatorReqeuest0 && !actuatorActual0)
     {
       displayQMesg.index = 0; 
@@ -70,6 +93,7 @@ static void actuatorsTask(void *arg)
       xQueueSend(displayQueue, &displayQMesg, 0);
     }
 
+    // switch on if onDelay is not counting
     if (actuatorReqeuest0 && !actuatorActual0 && (onDelaySec0 == 0))
     {
       printf("[ACTUATORS] RELAY0 ON !!!\n");
@@ -81,11 +105,14 @@ static void actuatorsTask(void *arg)
     {
       if (onDelaySec0 > 0)
       {
-        // count-down
+        // Count down
         onDelaySec0--;
       }
     }
 
+
+
+    // ACTUATOR 0 - Switch OFF request
 
     if (!actuatorReqeuest0 && actuatorActual0)
     {
@@ -105,7 +132,7 @@ static void actuatorsTask(void *arg)
     }
     else
     {
-      // count-down
+      // Count down
       if (offDelaySec0 > 0)
       {
         offDelaySec0--;
@@ -118,7 +145,9 @@ static void actuatorsTask(void *arg)
     }
 
 
-    // ACTUATOR 1
+
+    // ACTUATOR 1 - Switch ON request
+
     if (actuatorReqeuest1 && !actuatorActual1)
     {
       displayQMesg.index = 1; 
@@ -127,6 +156,7 @@ static void actuatorsTask(void *arg)
       xQueueSend(displayQueue, &displayQMesg, 0);
     }
 
+    // switch on if onDelay is not counting
     if (actuatorReqeuest1 && !actuatorActual1 && (onDelaySec1 == 0))
     {
       printf("[ACTUATORS] RELAY1 ON !!!\n");
@@ -144,6 +174,9 @@ static void actuatorsTask(void *arg)
     }
 
 
+
+    // ACTUATOR 1 - Switch OFF request
+
     if (!actuatorReqeuest1 && actuatorActual1)
     {
       displayQMesg.index = 1; 
@@ -152,6 +185,7 @@ static void actuatorsTask(void *arg)
       xQueueSend(displayQueue, &displayQMesg, 0);
     }
 
+    // switch off if offDelay is not counting
     if (!actuatorReqeuest1 && actuatorActual1 && (offDelaySec1 == 0))
     {
       printf("[ACTUATORS] RELAY1 OFF !!!\n");
