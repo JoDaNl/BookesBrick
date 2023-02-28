@@ -7,6 +7,7 @@
 typedef enum displayQueueDataType
 {
     e_temperature,
+    e_setpoint,
     e_actuator,
     e_wifiInfo,
     e_heartbeat,
@@ -16,18 +17,18 @@ typedef enum displayQueueDataType
 
 typedef union displayQueueData
 {
-  u_int16_t temperature;
-  u_int8_t actuator;
-  u_int8_t heartbeat;
-  u_int8_t error;
+  uint16_t temperature;
+  uint8_t actuator;
+  uint8_t heartbeat;
+  uint8_t error;
   char wifiInfo[32];
 } displayQueueData_t;
 
 typedef struct displayQueueItem
 {
   displayQueueDataType_t type;
-  u_int8_t index;
-  u_int16_t duration;
+  uint8_t index;
+  uint16_t duration;
   displayQueueData_t data;
 } displayQueueItem_t;
 

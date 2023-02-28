@@ -84,12 +84,16 @@ static void displayTask(void *arg)
       {
       case e_temperature:
         // printf("[DISPLAY] %2.1f\n",qMesg.data.temperature / 10.0);
-        lcd.setCursor(0, 0);
         lcd.setCursor(0, 1);
         sprintf(buf, "%2.1f", qMesg.data.temperature / 10.0);
         lcd.printf(buf);
         break;
-
+      case e_setpoint:
+        printf("[DISPLAY] setPoint=%d\n",qMesg.data.temperature);
+        lcd.setCursor(6, 1);
+        sprintf(buf, "%2.1f", qMesg.data.temperature / 10.0);
+        lcd.printf(buf);
+        break;
       case e_wifiInfo:
         lcd.clear();
         lcd.setCursor(0, 0);

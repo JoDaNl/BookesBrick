@@ -8,8 +8,8 @@
 
 typedef struct actuatorQueueItem
 {
-  u_int8_t number;
-  u_int8_t onOff;
+  uint8_t number;
+  uint8_t onOff;
 } actuatorQueueItem_t;
 
 

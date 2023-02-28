@@ -406,7 +406,7 @@ static void communicationTask(void *arg)
       }
 
     }
-#define NO_LCD_TEST_CODE
+#define LCD_TEST_CODE
 #ifdef LCD_TEST_CODE
  
     // THIS IS ALPHA CODE....PAINT STILL WET !!!
@@ -459,11 +459,28 @@ static void communicationTask(void *arg)
         //    "next_request_ms" : 45000
         // }
 
+        // Use a JSON filter document, see : https://arduinojson.org/v6/how-to/deserialize-a-very-large-document/
+
+        // { 
+        //     "result" : true,
+        //     "brews" :
+        //     [
+        //         { "targetTemperatureC" : true }
+        //     ],
+        //  "next_request_ms" : true
+        // }
+
+        StaticJsonDocument<128> filterDoc;
+        filterDoc["result"] = true;
+        filterDoc["brews"][0]["targetTemperatureC"] = true;
+        filterDoc["next_request_ms"] = true;
+
+
         printf("[COMMS] Received response from LCD API\n");
         printf("[COMMS] response LCD=%s\n", response.c_str());
 
         // Parse JSON object
-        DeserializationError error = deserializeJson(jsonResponseDoc, response.c_str());
+        DeserializationError error = deserializeJson(jsonResponseDoc, response.c_str(), DeserializationOption::Filter(filterDoc) );
 
         if (error)
         {
@@ -471,8 +488,27 @@ static void communicationTask(void *arg)
         }
         else
         {
-          if (jsonResponseDoc["error"] == 0)
+          printf("[COMMS]   result=%s\n",jsonResponseDoc["result"].as<const char *>());
+          printf("[COMMS]   targetTemp=%d\n",jsonResponseDoc["brews"][0]["targetTemperatureC"].as<int>());
+          printf("[COMMS]   next_request_ms=%ld\n",jsonResponseDoc["next_request_ms"].as<long>());
+
+          if (jsonResponseDoc["result"] == "success")
           {
+            uint16_t targetTemp;
+
+//            if (jsonResponseDoc.containsKey("targetTemperatureC"))
+            {
+              targetTemp = jsonResponseDoc["brews"][0]["targetTemperatureC"].as<uint16_t>();
+
+              // send target temperature to 
+              displayQMesg.type = e_setpoint;
+              displayQMesg.data.temperature = targetTemp*10;
+              displayQMesg.duration = 0;
+              xQueueSend(displayQueue, &displayQMesg, 0);
+
+
+            }
+
             if (jsonResponseDoc.containsKey("next_request_ms"))
             {
               nextLCDReqMs = jsonResponseDoc["next_request_ms"].as<long>();
@@ -496,7 +532,7 @@ static void communicationTask(void *arg)
     wm.process();
 
 
-    // printf("[COMMS]     nextTempRequestSec=%3d   nextLCDRequestSec=%3d\n", nextTempRequestSec, nextLCDRequestSec);
+    printf("[COMMS]     nextTempRequestSec=%3d   nextLCDRequestSec=%3d\n", nextTempRequestSec, nextLCDRequestSec);
 
     // loop delay
     vTaskDelay(1000 / portTICK_RATE_MS);
