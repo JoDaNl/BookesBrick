@@ -139,10 +139,10 @@ static void actuatorsTask(void *arg)
       }
     }
 
-    if (( onDelaySec0 > 0) || (offDelaySec0 > 0) )
-    {
-      // printf("[ACTUATORS] onDelaySec0=%d - offDelaySec0=%d\n", onDelaySec0, offDelaySec0);
-    }
+    // if (( onDelaySec0 > 0) || (offDelaySec0 > 0) )
+    // {
+    //    printf("[ACTUATORS] onDelaySec0=%d - offDelaySec0=%d\n", onDelaySec0, offDelaySec0);
+    // }
 
 
 

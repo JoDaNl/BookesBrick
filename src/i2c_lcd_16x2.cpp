@@ -60,7 +60,7 @@ static void displayTask(void *arg)
 
   lcd.clear();
   lcd.setCursor(3, 0);
-  lcd.print("Bookus Beer");
+  lcd.print("Bookes Beer");
   lcd.setCursor(3, 1);
   lcd.print("Automation");
   vTaskDelay(2000 / portTICK_RATE_MS);
@@ -97,8 +97,8 @@ static void displayTask(void *arg)
       case e_wifiInfo:
         lcd.clear();
         lcd.setCursor(0, 0);
-        lcd.printf("WIFI:%s", qMesg.data.wifiInfo);
-
+        lcd.printf("SSID:%s", qMesg.data.wifiSSID);
+        lcd.printf("IP  :%s", qMesg.data.wifiIP);
         vTaskDelay(qMesg.duration * 1000 / portTICK_RATE_MS);
         lcdHelper();
         break;

@@ -4,16 +4,9 @@
 
 #include "config.h"
 #include <Arduino.h>
-// the following defines MUST be defined BEFORE the DRD include file!
-#define USE_SPIFFS false
-#define USE_LITTEFS false
-#define ESP_DRD_USE_EEPROM true
-#include <ESP_DoubleResetDetector.h>
-#include <WifiManager.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <preferences.h>
-#include <ESP32ping.h>
 #include "monitor.h"
 #include "comms.h"
 #include "i2c_lcd_16x2.h"
@@ -22,140 +15,14 @@
 #define COMMS_WM_RESET false
 #define COMMS_WM_DEBUG true
 
-#define BBPREFS "bbbrick"
-#define BBAPIKEYID "bbApiKey"
-#define BBAPIKEYLABEL "BB API-key"
-#define BBPORTALTIMEOUT 90
-#define BBDRDTIMEOUT 5
-#define BBPINGURL "8.8.8.8"
-
 // GLOBALS
 xQueueHandle communicationQueue = NULL;
 
 // module scope
-static WiFiManager wm;
-static bool wmSaveConfig = false;
-static DoubleResetDetector *drd;
-static uint64_t chipId;
-static String apiKey;
 
-// ============================================================================
-// WIFIMANAGER CALLBACK
-// ============================================================================
+// exported in wifimap.cpp <TDO> move to include or so
+extern String apiKey;
 
-static void saveWMConfigCallback()
-{
-  printf("[COMMS] WiFiManager callback : save config\n");
-  wmSaveConfig = true;
-}
-
-// ============================================================================
-// INIT WIFI
-// ============================================================================
-
-static void initWiFi(void)
-{
-  static bool status;
-  static displayQueueItem_t displayQMesg;
-
-  // PREFERENCES
-  static Preferences prefs;
-
-  // Message for display task
-  displayQMesg.type = e_wifiInfo;
-  displayQMesg.index = 0;
-  displayQMesg.duration = 10; // seconds
-
-  // Get MAC addres as unique ID for BB URL
-  chipId = ESP.getEfuseMac();
-
-  // ===========================================================
-  // WIFIMANAGER
-  // ===========================================================
-
-  // Optionally reset WifiManager settings
-#if (COMM_WM_RESET == true)
-  printf("[COMMS] RESETTING ALL WIFIMANAGER SETTINGS!!!\n");
-  wm.resetSettings();
-#endif
-
-  // Optionally silence WiFiManager...to chatty at startup
-  wm.setDebugOutput(COMMS_WM_DEBUG);
-#if (COMMS_WM_DEBUG == true)
-  printf("[COMMS] WIFIMANAGER DEBUG INFO ON\n");
-  wm.debugPlatformInfo();
-  wm.debugSoftAPConfig();
-#endif
-
-  // read 'preferences'
-  prefs.begin(BBPREFS, true);               // read only mode
-  apiKey = prefs.getString(BBAPIKEYID, ""); // leave default empty
-  printf("[COMMS] apiKey read from preferences=%s\n", apiKey.c_str());
-  prefs.end();
-
-  // ===========================================================
-  // START WIFI
-  // ===========================================================
-
-  // Add custom "BierBot Bricks API Key" parameter to WiFiManager, max length = 32
-  static WiFiManagerParameter bbApiKey(BBAPIKEYID, BBAPIKEYLABEL, apiKey.c_str(), 32);
-  wm.addParameter(&bbApiKey);
-  wm.setSaveConfigCallback(saveWMConfigCallback);
-
-  // Double Reset detection
-  drd = new DoubleResetDetector(BBDRDTIMEOUT, 0); // TODO : static declaraion (not pointer..so no NEW required)
-
-  if (drd->detectDoubleReset())
-  {
-    // Start configuration portal
-    printf("\n\n[COMMS] Double Reset Detected...\n");
-    printf("[COMMS] ...starting config portal\n\n");
-
-    // Send info to display-task
-    strcpy(displayQMesg.data.wifiInfo, (char *)"Config Mode");
-    xQueueSend(displayQueue, &displayQMesg, 0);
-
-    wm.setConfigPortalBlocking(false);
-    wm.setConfigPortalTimeout(BBPORTALTIMEOUT);
-
-    // Start the config portal
-    status = wm.startConfigPortal(CFG_COMM_SSID_PORTAL);
-    printf("[COMMS] Portal closed. Status=%d\n\n", status);
-  }
-  else
-  {
-    printf("[COMMS] WiFiManager Autoconnect..\n");
-    status = wm.autoConnect(CFG_COMM_SSID_PORTAL);
-    printf("[COMMS] WiFimanager autoconnect status=%d\n", status);
-  }
-
-  if (wmSaveConfig)
-  {
-    // Save custom parameter to 'preferences'
-    apiKey = bbApiKey.getValue();
-    printf("[COMMS] saving custom parameter(s)\n");
-    printf("[COMMS] apiKey=%s\n", apiKey.c_str());
-    prefs.begin(BBPREFS, false);
-    prefs.putString(BBAPIKEYID, apiKey);
-    prefs.end();
-  }
-
-  // ===========================================================
-  // CHECK FOR INTERNET CONNECTION, PING GOOGLE
-  // ===========================================================
-
-  // At this point in the coe we should have WiFi connection...check if we can reach the internet
-  status = Ping.ping(BBPINGURL, 3);
-
-  if (status)
-  {
-    printf("[COMMS] We have internet connection !!!\n");
-  }
-  else
-  {
-    printf("[COMMS] We have NO internet connection !!!\n");
-  }
-}
 
 // ============================================================================
 // COMMUNICATION TASK
@@ -180,8 +47,8 @@ static void communicationTask(void *arg)
   static HTTPClient http;
   static int httpGETStatus;
 
-  // PREFERENCES
-  static Preferences prefs;
+  // use cipID as unique ID required by BB api
+  static uint64_t chipId;
 
   // BIERBOT
   static String bbUrlPart;
@@ -202,6 +69,9 @@ static void communicationTask(void *arg)
   displayQMesg.type = e_wifiInfo;
   displayQMesg.index = 0;
   displayQMesg.duration = 10; // seconds
+
+// Get MAC addres as unique ID for BB URL
+  chipId = ESP.getEfuseMac();
 
   bbUrlPart = cfgCommBBApiUrlbase +
               "?apikey=" + apiKey +
@@ -240,24 +110,9 @@ static void communicationTask(void *arg)
       printf("[COMMS] temperature received : %2.1f\n", temperature / 10.0);
     }
 
-    // Check WiFi status
-    if (WiFi.status() != WL_CONNECTED)
+    // Check WiFi status and if preferences are loaded from FLASH/EEPROM
+    if (WiFi.status() == WL_CONNECTED)
     {
-      printf("[COMMS] Reconnecting to WiFi...\n");
-      if (WiFi.reconnect())
-      {
-        printf("[COMMS] Reconnecting succeeded\n");
-      }
-      else
-      {
-        printf("[COMMS] Reconnecting FAILED!\n");
-      }
-    }
-    else
-    {
-      // We are (again) connected to WiFi !
-      // printf("[COMMS] next_request_sec=%d\n",nextTempRequestSec);
-
       // Send temperature to BB backend...
       if (nextTempRequestSec == 0)
       {
@@ -396,7 +251,6 @@ static void communicationTask(void *arg)
 
           http.end(); // Free the resources
         }
-
       }
 
       if (nextTempRequestSec > 0)
@@ -405,114 +259,111 @@ static void communicationTask(void *arg)
         nextTempRequestSec--;
       }
 
-    }
 #define LCD_TEST_CODE
 #ifdef LCD_TEST_CODE
- 
-    // THIS IS ALPHA CODE....PAINT STILL WET !!!
 
-    if (nextLCDRequestSec == 0)
-    {
-      nextLCDRequestSec = 60;
+      // THIS IS ALPHA CODE....PAINT STILL WET !!!
 
-      http.begin(bbUrlLCD);
-      httpGETStatus = http.GET();
-
-      if (httpGETStatus > 0)
+      if (nextLCDRequestSec == 0)
       {
-        String response;
+        nextLCDRequestSec = 60;
 
-        response = http.getString();
+        http.begin(bbUrlLCD);
+        httpGETStatus = http.GET();
 
-        // example response:
-        // {
-        //    "result" : "success",
-        //    "error" : 0,
-        //    "error_text" : "",
-        //    "warning" : 0,
-        //    "warning_text" : "",
-        //    "settings" :
-        //    {
-        //        "temperatureUnit" : "celsius",
-        //        "displayBrewEveryS" : 5,
-        //        "showLocalIP" : false
-        //    },
-        //    "brews" :
-        //    [
-        //       {
-        //           "currentTemperatureC" :
-        //           {
-        //               "na" : -273,
-        //               "primary" : 16.375,
-        //               "secondary" : -273,
-        //               "hlt" : -273,
-        //               "mlt" : -273
-        //           },
-        //           "id" : "iWY3XYUVGtR81oudBy7p",
-        //           "name" : "Fermentation only",
-        //           "targetTemperatureC" : 17,
-        //           "nextEvents" :
-        //           [
-        //           ]
-        //        }
-        //    ],
-        //    "next_request_ms" : 45000
-        // }
-
-        // Use a JSON filter document, see : https://arduinojson.org/v6/how-to/deserialize-a-very-large-document/
-
-        // { 
-        //     "result" : true,
-        //     "brews" :
-        //     [
-        //         { "targetTemperatureC" : true }
-        //     ],
-        //  "next_request_ms" : true
-        // }
-
-        StaticJsonDocument<128> filterDoc;
-        filterDoc["result"] = true;
-        filterDoc["brews"][0]["targetTemperatureC"] = true;
-        filterDoc["next_request_ms"] = true;
-
-
-        printf("[COMMS] Received response from LCD API\n");
-        printf("[COMMS] response LCD=%s\n", response.c_str());
-
-        // Parse JSON object
-        DeserializationError error = deserializeJson(jsonResponseDoc, response.c_str(), DeserializationOption::Filter(filterDoc) );
-
-        if (error)
+        if (httpGETStatus > 0)
         {
-          printf("[COMMS] deserializeJson() failed: %s\n", error.f_str());
-        }
-        else
-        {
-          printf("[COMMS]   result=%s\n",jsonResponseDoc["result"].as<const char *>());
-          printf("[COMMS]   targetTemp=%d\n",jsonResponseDoc["brews"][0]["targetTemperatureC"].as<int>());
-          printf("[COMMS]   next_request_ms=%ld\n",jsonResponseDoc["next_request_ms"].as<long>());
+          String response;
 
-          if (jsonResponseDoc["result"] == "success")
+          response = http.getString();
+
+          // example response:
+          // {
+          //    "result" : "success",
+          //    "error" : 0,
+          //    "error_text" : "",
+          //    "warning" : 0,
+          //    "warning_text" : "",
+          //    "settings" :
+          //    {
+          //        "temperatureUnit" : "celsius",
+          //        "displayBrewEveryS" : 5,
+          //        "showLocalIP" : false
+          //    },
+          //    "brews" :
+          //    [
+          //       {
+          //           "currentTemperatureC" :
+          //           {
+          //               "na" : -273,
+          //               "primary" : 16.375,
+          //               "secondary" : -273,
+          //               "hlt" : -273,
+          //               "mlt" : -273
+          //           },
+          //           "id" : "iWY3XYUVGtR81oudBy7p",
+          //           "name" : "Fermentation only",
+          //           "targetTemperatureC" : 17,
+          //           "nextEvents" :
+          //           [
+          //           ]
+          //        }
+          //    ],
+          //    "next_request_ms" : 45000
+          // }
+
+          // Use a JSON filter document, see : https://arduinojson.org/v6/how-to/deserialize-a-very-large-document/
+
+          // {
+          //     "result" : true,
+          //     "brews" :
+          //     [
+          //         { "targetTemperatureC" : true }
+          //     ],
+          //  "next_request_ms" : true
+          // }
+
+          StaticJsonDocument<128> filterDoc;
+          filterDoc["result"] = true;
+          filterDoc["brews"][0]["targetTemperatureC"] = true;
+          filterDoc["next_request_ms"] = true;
+
+          printf("[COMMS] Received response from LCD API\n");
+          printf("[COMMS] response LCD=%s\n", response.c_str());
+
+          // Parse JSON object
+          DeserializationError error = deserializeJson(jsonResponseDoc, response.c_str(), DeserializationOption::Filter(filterDoc));
+
+          if (error)
           {
-            uint16_t targetTemp;
+            printf("[COMMS] deserializeJson() failed: %s\n", error.f_str());
+          }
+          else
+          {
+            printf("[COMMS]   result=%s\n", jsonResponseDoc["result"].as<const char *>());
+            printf("[COMMS]   targetTemp=%d\n", jsonResponseDoc["brews"][0]["targetTemperatureC"].as<int>());
+            printf("[COMMS]   next_request_ms=%ld\n", jsonResponseDoc["next_request_ms"].as<long>());
 
-//            if (jsonResponseDoc.containsKey("targetTemperatureC"))
+            if (jsonResponseDoc["result"] == "success")
             {
-              targetTemp = jsonResponseDoc["brews"][0]["targetTemperatureC"].as<uint16_t>();
+              uint16_t targetTemp;
 
-              // send target temperature to 
-              displayQMesg.type = e_setpoint;
-              displayQMesg.data.temperature = targetTemp*10;
-              displayQMesg.duration = 0;
-              xQueueSend(displayQueue, &displayQMesg, 0);
+              //            if (jsonResponseDoc.containsKey("targetTemperatureC"))
+              {
+                targetTemp = jsonResponseDoc["brews"][0]["targetTemperatureC"].as<uint16_t>();
 
+                // send target temperature to
+                displayQMesg.type = e_setpoint;
+                displayQMesg.data.temperature = targetTemp * 10;
+                displayQMesg.duration = 0;
+                xQueueSend(displayQueue, &displayQMesg, 0);
+              }
 
-            }
-
-            if (jsonResponseDoc.containsKey("next_request_ms"))
-            {
-              nextLCDReqMs = jsonResponseDoc["next_request_ms"].as<long>();
-              nextLCDRequestSec = nextLCDReqMs / 1000;
+              if (jsonResponseDoc.containsKey("next_request_ms"))
+              {
+                nextLCDReqMs = jsonResponseDoc["next_request_ms"].as<long>();
+                nextLCDRequestSec = nextLCDReqMs / 1000;
+              }
             }
           }
         }
@@ -527,12 +378,8 @@ static void communicationTask(void *arg)
 
 #endif
 
-    // Double Reset Detector & WiFiManager must be called regularly
-    drd->loop();
-    wm.process();
 
-
-    printf("[COMMS]     nextTempRequestSec=%3d   nextLCDRequestSec=%3d\n", nextTempRequestSec, nextLCDRequestSec);
+//    printf("[COMMS]     nextTempRequestSec=%3d   nextLCDRequestSec=%3d\n", nextTempRequestSec, nextLCDRequestSec);
 
     // loop delay
     vTaskDelay(1000 / portTICK_RATE_MS);
@@ -549,15 +396,13 @@ void initCommmunication(void)
 
   printf("[COMMS] init\n");
 
-  initWiFi();
-
   // queue is only 1 deep...
   // sender is probably to fast and cannot transmit all measured temperatures
   // but we don't care....just take 1 temperature from queue...
   communicationQueue = xQueueCreate(1, sizeof(uint16_t));
   if (communicationQueue == 0)
   {
-    printf("[DISPLAY] Cannot create communicationQueue. This is FATAL");
+    printf("[COMMS] Cannot create communicationQueue. This is FATAL\n");
   }
 
   // create task

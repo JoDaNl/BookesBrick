@@ -44,10 +44,28 @@
 #define CFG_COMM_ONLINE_TIMEOUT     120
 
 #define CFG_COMM_BBAPI_URL_BASE     "https://bricks.bierbot.com/api/iot/v1"
-#define CFG_COMM_DEVICE_TYPE        "bookusbrick" 
-#define CFG_COMM_DEVICE_BRAND       "bookusbeer" 
+#define CFG_COMM_DEVICE_TYPE        "bookesbrick" 
+#define CFG_COMM_DEVICE_BRAND       "bookesbeer" 
 #define CFG_COMM_DEVICE_VERSION     "0.1" 
 
+#define CFG_COMM_WM_DEBUG            true
+#define cfg_COMM_WM_RESET_SETTINGS   false
+#define CFG_COMM_WM_USE_DRD          false
+#define CFG_COMM_WM_USE_PIN          true
+#define CFG_COMM_WM_PORTAL_PIN       5
+#define CFG_COMM_HOSTNAME           "bookesbrick1"
+
 //=============================================
+
+#define BBPREFS                     "bbbrick"
+#define BBAPIKEYID                  "bbApiKey"
+#define BBAPIKEYLABEL               "BB API-key"
+#define BBPORTALTIMEOUT             120
+#define BBDRDTIMEOUT                10
+#define BBPINGURL                   "8.8.8.8"
+
+
+//=============================================
+
 
 #endif

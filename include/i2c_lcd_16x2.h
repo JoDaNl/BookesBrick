@@ -21,7 +21,8 @@ typedef union displayQueueData
   uint8_t actuator;
   uint8_t heartbeat;
   uint8_t error;
-  char wifiInfo[32];
+  char wifiSSID[32];
+  char wifiIP[16];
 } displayQueueData_t;
 
 typedef struct displayQueueItem

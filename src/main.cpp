@@ -1,13 +1,14 @@
 //
-// BOOKUS BEER AUTOMATION
+// BOOKES BEER AUTOMATION
 //
 
 // Includes
 #include <Arduino.h>
 #include "config.h"
+#include "wifiman.h"
+#include "comms.h"
 #include "sensors.h"
 #include "monitor.h"
-#include "comms.h"
 #include "actuators.h"
 #include "i2c_lcd_16x2.h"
 
@@ -18,7 +19,7 @@
 
 void setup()
 {
- 
+
   Serial.begin(115200);
 
   while (!Serial)
@@ -31,7 +32,9 @@ void setup()
   printf("[SETUP] Started !!!\n");
   printf("========================\n");
 
+
   // Start all tasks
+  initWifiMan();
   delay(100);
   initMonitor();
   delay(100);
@@ -44,6 +47,9 @@ void setup()
   initSensors();
   printf("========================\n");
   printf("\n");
+  printf("========================\n");
+  printf("[SETUP] Done !!!\n");
+  printf("========================\n");
   
 };
 

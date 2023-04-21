@@ -21,12 +21,9 @@ static TaskHandle_t monitorTaskHandle = NULL;
 static void monitorTask(void *arg)
 {
   static uint8_t qReceiveMesg;
-  static uint8_t ledOn = 0;
   static displayQueueItem_t qDisplayMesg;
   static uint16_t onlineTimeoutCount = CFG_COMM_ONLINE_TIMEOUT;
-
-  // set LED as ouput, as it will toggle every second
-  pinMode(LED_BUILTIN, OUTPUT);
+  static uint8_t blink = 0;
 
   while (true)
   {
@@ -65,18 +62,15 @@ static void monitorTask(void *arg)
 
     // printf("[MONITOR] Time-out counter=%d\n",onlineTimeoutCount);
 
-    // toggle builtin led
-    digitalWrite(LED_BUILTIN, ledOn);
 
     // send heartbeat message to display
-
     qDisplayMesg.type = e_heartbeat;
     qDisplayMesg.index = 0;
     qDisplayMesg.duration = 0;
-    qDisplayMesg.data.heartbeat = ledOn;
+    qDisplayMesg.data.heartbeat = blink;
     xQueueSend(displayQueue, &qDisplayMesg, 0);
 
-    ledOn = !ledOn;
+    blink = !blink;
   }
 };
 

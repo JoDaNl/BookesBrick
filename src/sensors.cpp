@@ -1,5 +1,5 @@
 //
-//  actuators.cpp
+//  sensors.cpp
 //
 
 #include "config.h"
@@ -32,6 +32,7 @@ void sensorsTask(void *arg)
   static float temp_sens = 0.0;
   static int temp_smooth = 0;
   static int temp_sprev = 0;
+  static bool temp_error = false;
   static int num_sensors;
   static displayQueueItem_t qMesg;
 
@@ -67,34 +68,52 @@ void sensorsTask(void *arg)
 
       // TODO : get temperatures for all discovered devices
       // TODO : system should work (actuators) even if NO sensor is present ! There's a dependency right now
+
 #ifdef CFG_TEMP_IN_CELCIUS
       temp_sens = sensors.getTempCByIndex(0);
+      temp_error = (temp_sens == DEVICE_DISCONNECTED_C);
 #elif CFG_TEMP_IN_FARENHEID
       temperature = sensors.getTempFByIndex(0);
+      temp_error = (temp_sens == DEVICE_DISCONNECTED_F);
 #else
       printf("[SENSORS] NO TEMPERATURE SENSOR DEFINED\n");
 #endif
 
-      // printf("[SENSORS] Temperature sensor %d is: %f\n",0, sensors.getTempCByIndex(0) );
-
-      // smooth measured temp * 100 (2 digits accuracy)
-      smooth.setValue(temp_sens * 10);
-
-      if (smooth.isValid())
+      if (temp_error)
       {
-        temp_smooth = smooth.getValue();
+        printf("[SENSORS] TEMPERATURE SENSOR ERROR !!!\n");
+        
+        // reset 1-wire bus
+        vTaskDelay(500 / portTICK_RATE_MS);
+        oneWire.reset();
+        vTaskDelay(500 / portTICK_RATE_MS);
+        sensors.begin();
+        vTaskDelay(500 / portTICK_RATE_MS);
+      }
+      else
+      {
 
-        // send temperature to display-queue
-        // only send when temperature has changed.
-        if ((temp_smooth != temp_sprev) && displayQueue != NULL)
+        // printf("[SENSORS] Temperature sensor %d is: %f\n",0, sensors.getTempCByIndex(0) );
+
+        // smooth measured temp * 100 (2 digits accuracy)
+        smooth.setValue(temp_sens * 10);
+
+        if (smooth.isValid())
         {
-          qMesg.data.temperature = temp_smooth;
+          temp_smooth = smooth.getValue();
 
-          // not checking result (must be pdPASS)...
-          xQueueSend(displayQueue, &qMesg, 0);
-          xQueueSend(communicationQueue, &temp_smooth, 0);
+          // send temperature to display-queue
+          // only send when temperature has changed.
+          if ((temp_smooth != temp_sprev) && displayQueue != NULL)
+          {
+            qMesg.data.temperature = temp_smooth;
 
-          temp_sprev = temp_smooth;
+            // not checking result (must be pdPASS)...
+            xQueueSend(displayQueue, &qMesg, 0);
+            xQueueSend(communicationQueue, &temp_smooth, 0);
+
+            temp_sprev = temp_smooth;
+          }
         }
       }
     }
