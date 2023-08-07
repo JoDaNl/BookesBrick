@@ -20,7 +20,7 @@ xQueueHandle communicationQueue = NULL;
 
 // module scope
 
-// exported in wifimap.cpp <TDO> move to include or so
+// exported in wifimap.cpp <TODO> move to include or so
 extern String apiKey;
 
 
@@ -92,7 +92,7 @@ static void communicationTask(void *arg)
   // TASK LOOP
   // ===========================================================
 
-  // TODO : simplify code, re strucuture & put TEMp & LCD stuff into helper functions
+  // TODO : simplify code, re strucuture & put TEMP & LCD stuff into helper functions
 
   // initial start-up delay...it's fancy to be late :-)
   nextTempRequestSec = 15;
@@ -406,7 +406,7 @@ void initCommmunication(void)
   }
 
   // create task
-  xTaskCreatePinnedToCore(communicationTask, "communicationTask", 4096, NULL, 10, &communicationTaskHandle, 0);
+  xTaskCreate(communicationTask, "communicationTask", 4096, NULL, 10, &communicationTaskHandle);
 }
 
 // end of file

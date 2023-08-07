@@ -33,8 +33,9 @@ typedef struct displayQueueItem
   displayQueueData_t data;
 } displayQueueItem_t;
 
-extern xQueueHandle displayQueue;
 
+
+extern xQueueHandle displayQueue;
 
 extern void initDisplay(void);
 

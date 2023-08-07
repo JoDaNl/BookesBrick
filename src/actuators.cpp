@@ -225,7 +225,7 @@ void initActuators(void)
   }
 
   // create task
-  xTaskCreatePinnedToCore(actuatorsTask, "actuatorsTask", 4096, NULL, 10, &actuatorsTaskHandle, 0);
+  xTaskCreate(actuatorsTask, "actuatorsTask", 4096, NULL, 10, &actuatorsTaskHandle);
 }
 
 // end of file

@@ -208,6 +208,6 @@ void initDisplay(void)
   }
 
   // create task
-  xTaskCreatePinnedToCore(displayTask, "displayTask", 4096, NULL, 10, &displayTaskHandle, 0);
+  xTaskCreate(displayTask, "displayTask", 4096, NULL, 10, &displayTaskHandle);
 }
 // end of file

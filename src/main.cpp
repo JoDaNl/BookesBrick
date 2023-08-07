@@ -5,12 +5,15 @@
 // Includes
 #include <Arduino.h>
 #include "config.h"
+#include "controller.h"
+#include "blinkled.h"
 #include "wifiman.h"
 #include "comms.h"
 #include "sensors.h"
 #include "monitor.h"
 #include "actuators.h"
 #include "i2c_lcd_16x2.h"
+
 
 
 // ============================================================================
@@ -33,20 +36,34 @@ void setup()
   printf("========================\n");
 
 
+#if (CFG_COMM_WM_USE_PIN == true)
+  //check button state at power-up
+  config.inConfigMode = checkBootConfigMode();
+#endif
+
   // Start all tasks
-  initWifiMan();
-  delay(100);
-  initMonitor();
-  delay(100);
+  
+  initBlinkLed(CFG_LED_PIN);
+  delay(10);
   initDisplay(); 
-  delay(100);
-  initCommmunication();
-  delay(100);
-  initActuators();
-  delay(100);
-  initSensors();
-  printf("========================\n");
-  printf("\n");
+  delay(10);
+
+  initController();
+  delay(10);
+
+  if (!config.inConfigMode)
+  {
+//  initWifiMan();
+//  delay(10);
+//  initMonitor();
+//  delay(10);
+//  initCommmunication();
+//  delay(10);
+//  initActuators();
+//  delay(10);
+    initSensors();
+  }
+
   printf("========================\n");
   printf("[SETUP] Done !!!\n");
   printf("========================\n");

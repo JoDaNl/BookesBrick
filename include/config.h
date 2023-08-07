@@ -5,6 +5,8 @@
 #ifndef __CONFIG_H__
 #define __CONFIG_H__
 
+#include <Arduino.h>
+
 //=============================================
 
 #define CFG_TEMP_ENABLED        true
@@ -15,6 +17,10 @@
 //=============================================
 
 #define CFG_LCD_16x2_I2C        true
+
+//=============================================
+
+#define CFG_LED_PIN             LED_BUILTIN
 
 //=============================================
 
@@ -46,11 +52,11 @@
 #define CFG_COMM_BBAPI_URL_BASE     "https://bricks.bierbot.com/api/iot/v1"
 #define CFG_COMM_DEVICE_TYPE        "bookesbrick" 
 #define CFG_COMM_DEVICE_BRAND       "bookesbeer" 
-#define CFG_COMM_DEVICE_VERSION     "0.1" 
+#define CFG_COMM_DEVICE_VERSION     "0.2" 
 
 #define CFG_COMM_WM_DEBUG            true
 #define cfg_COMM_WM_RESET_SETTINGS   false
-#define CFG_COMM_WM_USE_DRD          false
+#define CFG_COMM_WM_USE_DRD          true
 #define CFG_COMM_WM_USE_PIN          true
 #define CFG_COMM_WM_PORTAL_PIN       5
 #define CFG_COMM_HOSTNAME           "bookesbrick1"
@@ -67,5 +73,14 @@
 
 //=============================================
 
+typedef struct configValues
+{
+  bool inConfigMode;
+  String apiKey; 
+} configValues_t;
+
+extern configValues_t config;
+
+extern bool checkBootConfigMode(void);
 
 #endif
