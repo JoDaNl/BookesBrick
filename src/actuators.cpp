@@ -5,6 +5,7 @@
 #include "config.h"
 #include <Arduino.h>
 #include "actuators.h"
+#include "controller.h"
 
 // GLOBALS
 xQueueHandle actuatorsQueue = NULL;
@@ -15,7 +16,8 @@ xQueueHandle actuatorsQueue = NULL;
 
 static void actuatorsTask(void *arg)
 {
-  static actuatorQueueItem_t qMesg;
+  static actuatorQueueItem_t actuatorMesg;
+  static controllerQItem_t controllerMsg;
 
   // TODO : use arrays...you know how to..!
   static uint8_t actuatorReqeuest0;
@@ -51,29 +53,18 @@ static void actuatorsTask(void *arg)
   while (true)
   {
     // get message from queue
-    if (xQueueReceive(actuatorsQueue, &qMesg, 1000 / portTICK_RATE_MS) == pdTRUE)
+    if (xQueueReceive(actuatorsQueue, &actuatorMesg, 1000 / portTICK_RATE_MS) == pdTRUE)
     {
-      printf("[ACTUATORS] received qMesg.number=%d - qMesg.onOff=%d\n", qMesg.number, qMesg.onOff);
+      printf("[ACTUATORS] received qMesg.data=%d\n", actuatorMesg.data);
 
-      // qMesg.number is the actuator=number
-      // qMesg.onOff is the deribed/new state of the actuator
-      switch (qMesg.number)
-      {
-      case 0:
-        actuatorReqeuest0 = qMesg.onOff;
-        break;
-      case 1:
-        actuatorReqeuest1 = qMesg.onOff;
-        break;
-      default:
-        break;
-      }
+      actuatorReqeuest0 = actuatorMesg.data & 1;
+      actuatorReqeuest1 = (actuatorMesg.data >> 1) & 1;
     }
 
     // ON-OFF DELAY 
     // Actuators may have a pre-defined (see config.h) on and/or off delay
     // when an actuator goes into off-state it immediately can be triggered to go into on-state 
-    // but then CFG_RELAY0_ON_DELAY time must must have been passed before the actuator is 
+    // but then CFG_RELAY0_ON_DELAY time must  have been passed before the actuator is 
     // actually switched on...the task will take care for the delayed-switch-on
     // Similar is true for switching off.
     // All delays are in seconds/loop-iterations
@@ -83,10 +74,11 @@ static void actuatorsTask(void *arg)
 
     if (actuatorReqeuest0 && !actuatorActual0)
     {
-      // displayQMesg.index = 0; 
-      // displayQMesg.data.actuator = 1;
-      // displayQMesg.duration = onDelaySec0;
-      // xQueueSend(displayQueue, &displayQMesg, 0);
+      controllerMsg.type                      = e_mtype_backend;
+      controllerMsg.mesg.backendMesg.mesgId = e_msg_backend_act_delay;
+      controllerMsg.mesg.backendMesg.number = 0;
+      controllerMsg.mesg.backendMesg.data   = onDelaySec0;
+      xQueueSend(controllerQueue, &controllerMsg, 0);
     }
 
     // switch on if onDelay is not counting
@@ -112,10 +104,12 @@ static void actuatorsTask(void *arg)
 
     if (!actuatorReqeuest0 && actuatorActual0)
     {
-      // displayQMesg.index = 0; 
-      // displayQMesg.data.actuator = 0;
-      // displayQMesg.duration = offDelaySec0;
-      // xQueueSend(displayQueue, &displayQMesg, 0);
+      controllerMsg.type                      = e_mtype_backend;
+      controllerMsg.mesg.backendMesg.mesgId = e_msg_backend_act_delay;
+      controllerMsg.mesg.backendMesg.number = 0;
+      controllerMsg.mesg.backendMesg.data   = offDelaySec0;
+      xQueueSend(controllerQueue, &controllerMsg, 0);
+
     }
 
     // switch off if offDelay is not counting
@@ -146,10 +140,11 @@ static void actuatorsTask(void *arg)
 
     if (actuatorReqeuest1 && !actuatorActual1)
     {
-      // displayQMesg.index = 1; 
-      // displayQMesg.data.actuator = 1;
-      // displayQMesg.duration = onDelaySec1;
-      // xQueueSend(displayQueue, &displayQMesg, 0);
+      controllerMsg.type                      = e_mtype_backend;
+      controllerMsg.mesg.backendMesg.mesgId = e_msg_backend_act_delay;
+      controllerMsg.mesg.backendMesg.number = 1;
+      controllerMsg.mesg.backendMesg.data   = onDelaySec1;
+      xQueueSend(controllerQueue, &controllerMsg, 0);      
     }
 
     // switch on if onDelay is not counting
@@ -175,10 +170,11 @@ static void actuatorsTask(void *arg)
 
     if (!actuatorReqeuest1 && actuatorActual1)
     {
-      // displayQMesg.index = 1; 
-      // displayQMesg.data.actuator = 0;
-      // displayQMesg.duration = offDelaySec1;
-      // xQueueSend(displayQueue, &displayQMesg, 0);
+      controllerMsg.type                      = e_mtype_backend;
+      controllerMsg.mesg.backendMesg.mesgId = e_msg_backend_act_delay;
+      controllerMsg.mesg.backendMesg.number = 1;
+      controllerMsg.mesg.backendMesg.data   = offDelaySec1;
+      xQueueSend(controllerQueue, &controllerMsg, 0);      
     }
 
     // switch off if offDelay is not counting
@@ -206,12 +202,21 @@ static void actuatorsTask(void *arg)
   }
 };
 
+void powerUpActuators(void)
+{
+  // TODO : make configurable
+  pinMode(CFG_RELAY0_PIN, OUTPUT);
+  pinMode(CFG_RELAY1_PIN, OUTPUT);
+  digitalWrite(CFG_RELAY0_PIN, !CFG_RELAY0_ON_LEVEL);
+  digitalWrite(CFG_RELAY1_PIN, !CFG_RELAY1_ON_LEVEL);
+}
 
 void initActuators(void)
 {
   static TaskHandle_t actuatorsTaskHandle = NULL;
 
   printf("[ACTUATORS] init\n");
+
 
   actuatorsQueue = xQueueCreate(5, sizeof(actuatorQueueItem_t));
 

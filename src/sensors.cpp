@@ -16,10 +16,13 @@
 #include "controller.h"
 #include "comms.h"
 
-#define  SENSOR_SIMULATION 1
+// #define  SENSOR_SIMULATION 1
 
 // Temperature sensor
-#define SMOOTH_SAMPLES  7 // must be odd number
+#define SMOOTH_SAMPLES  (7) // must be odd number
+
+// Loop delay
+#define DELAY (2000)
 
 // Queues
 xQueueHandle sensorsQueue = NULL;
@@ -33,10 +36,11 @@ static TaskHandle_t sensorsTaskHandle = NULL;
 
 void sensorsTask(void *arg)
 {
-  static float temp_sens = 0.0;
-  static int temp_smooth = 0;
-  static bool temp_error = false;
-  static int num_sensors = 0;
+  static float tempSens = 0.0;
+  static int tempSmooth = 0;
+  static bool tempError = false;
+  static int numSensors = 0;
+  static bool tempValid = false;
   static controllerQItem_t qControllerMesg;
 
   static OneWire oneWire(CFG_TEMP_PIN);
@@ -52,50 +56,50 @@ void sensorsTask(void *arg)
   sensors.setResolution(12);
 
   // TODO : support for multiple sensors
-  num_sensors = sensors.getDS18Count();
-  printf("[SENSORS] Number of DS18B20 sensors found=%d\n", num_sensors);
+  numSensors = sensors.getDS18Count();
+  printf("[SENSORS] Number of DS18B20 sensors found=%d\n", numSensors);
 #else
-  num_sensors = 1;
+  numSensors = 1;
 #endif
 
   // inform controller about number of sensors discovered
-  if (controllerQueue)
-  {
-    qControllerMesg.type = e_mtype_sensor;
-    qControllerMesg.mesg.sensorMesg.mesgId = e_msg_sensor_numSensors;
-    qControllerMesg.mesg.sensorMesg.data = num_sensors;
-    xQueueSend(controllerQueue, &qControllerMesg , 0);
-  }
+  qControllerMesg.type = e_mtype_sensor;
+  qControllerMesg.mesg.sensorMesg.mesgId = e_msg_sensor_numSensors;
+  qControllerMesg.mesg.sensorMesg.data = numSensors;
+  qControllerMesg.valid = true;
+  xQueueSend(controllerQueue, &qControllerMesg , 0);
 
   // TODO : support for NTC sensors
 
   while (true)
   {
-    // printf("[SENSORS] PRINTING..\n");
+    // printf("[SENSORS] LOOP..\n");
 
 #ifndef SENSOR_SIMULATION
-    if (num_sensors > 0)
+    if (numSensors > 0)
     {
+      tempValid = false;
       sensors.requestTemperatures();
 
       // TODO : get temperatures for all discovered devices
 
 #ifdef CFG_TEMP_IN_CELCIUS
-      temp_sens = sensors.getTempCByIndex(0);
-      temp_error = (temp_sens == DEVICE_DISCONNECTED_C);
+      tempSens = sensors.getTempCByIndex(0);
+      tempError = (tempSens == DEVICE_DISCONNECTED_C);
 #elif CFG_TEMP_IN_FARENHEID
       temperature = sensors.getTempFByIndex(0);
-      temp_error = (temp_sens == DEVICE_DISCONNECTED_F);
+      tempError = (tempSens == DEVICE_DISCONNECTED_F);
 #else
       printf("[SENSORS] NO TEMPERATURE SENSOR DEFINED\n");
 #endif
 
 #else // SENSOR_SIMULATION
      {
-      temp_sens = 20.0 + rand()*5.0/RAND_MAX;
-      temp_error = false;
+      tempSens = 5.0 + rand()*30.0/RAND_MAX;
+      tempError = false;
+      tempValid = true;
 #endif
-      if (temp_error)
+      if (tempError)
       {
         printf("[SENSORS] TEMPERATURE SENSOR ERROR !!!\n");
         
@@ -111,25 +115,24 @@ void sensorsTask(void *arg)
       else
       {
         // smooth measured temp * 100 (2 digits accuracy)
-        smooth.setValue(temp_sens * 10);
+        smooth.setValue(tempSens * 10);
 
         if (smooth.isValid())
         {
-          temp_smooth = smooth.getValue();
-
-          // send temperature to controller-queue
-          if (controllerQueue)
-          {
-            qControllerMesg.type = e_mtype_sensor;
-            qControllerMesg.mesg.sensorMesg.mesgId = e_msg_sensor_temperature;
-            qControllerMesg.mesg.sensorMesg.data = temp_smooth;
-            xQueueSend(controllerQueue, &qControllerMesg , 0);
-          }
+          tempSmooth = smooth.getValue();
+          tempValid = true;
         }
       }
     }
 
-    vTaskDelay(2000 / portTICK_RATE_MS);
+    // send temperature to controller-queue
+    qControllerMesg.type                    = e_mtype_sensor;
+    qControllerMesg.mesg.sensorMesg.mesgId  = e_msg_sensor_temperature;
+    qControllerMesg.mesg.sensorMesg.data    = tempSmooth;
+    qControllerMesg.valid                   = tempValid;
+    xQueueSend(controllerQueue, &qControllerMesg , 0);
+
+    vTaskDelay(DELAY / portTICK_RATE_MS);
   }
 };
 

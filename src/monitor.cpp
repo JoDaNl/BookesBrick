@@ -5,14 +5,18 @@
 #include "config.h"
 
 #include <Arduino.h>
+#include <preferences.h>
+
 #include "monitor.h"
-//#include "i2c_lcd_16x2.h"
 
 // Queue
 xQueueHandle monitorQueue = NULL;
 
 // Actuators task
 static TaskHandle_t monitorTaskHandle = NULL;
+
+static int bootCounter=0;
+static Preferences prefs;
 
 // ============================================================================
 // MONITOR TASK
@@ -21,7 +25,6 @@ static TaskHandle_t monitorTaskHandle = NULL;
 static void monitorTask(void *arg)
 {
   static uint8_t qReceiveMesg;
-//  static displayQueueItem_t qDisplayMesg;
   static uint16_t onlineTimeoutCount = CFG_COMM_ONLINE_TIMEOUT;
   static uint8_t blink = 0;
 
@@ -62,7 +65,6 @@ static void monitorTask(void *arg)
 
     // printf("[MONITOR] Time-out counter=%d\n",onlineTimeoutCount);
 
-
     // send heartbeat message to display
     // qDisplayMesg.type = e_heartbeat;
     // qDisplayMesg.index = 0;
@@ -70,13 +72,26 @@ static void monitorTask(void *arg)
     // qDisplayMesg.data.heartbeat = blink;
     // xQueueSend(displayQueue, &qDisplayMesg, 0);
 
+//     printf("[MONITOR] bootCounter=%d\n", bootCounter);
     blink = !blink;
   }
+
+
 };
 
 void initMonitor(void)
 {
   printf("[MONITOR] init\n");
+
+//#define BB_BOOTCOUNT 1
+
+#ifdef BB_BOOTCOUNT
+  prefs.begin("BOOTCOUNT", false);  // read only mode
+  bootCounter = prefs.getInt("bootcounter", 0);
+  bootCounter++;
+  prefs.putInt("bootcounter", bootCounter);
+  prefs.end();
+#endif
 
   monitorQueue = xQueueCreate(5, sizeof(uint8_t));
 

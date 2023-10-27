@@ -12,7 +12,7 @@
 #include "sensors.h"
 #include "monitor.h"
 #include "actuators.h"
-//#include "i2c_lcd_16x2.h"
+#include "display.h"
 
 
 
@@ -22,6 +22,8 @@
 
 void setup()
 {
+  // Immediately set outputs/actuators to non-active
+  powerUpActuators();
 
   Serial.begin(115200);
 
@@ -45,29 +47,25 @@ void setup()
   
   initBlinkLed(CFG_LED_PIN);
   delay(10);
-//  initDisplay(); 
+  initDisplay2(); 
   delay(10);
 
   initController();
-  delay(10);
+  delay(100);
 
-  if (config.inConfigMode)
+  initWiFi(config.inConfigMode);
+
+  if (~config.inConfigMode)
   {
-    initConfigPortal();
-  }
-  else
-  {
-    initWiFi();
     delay(10);
     initSensors();
     delay(10);
-//  initMonitor();
-//  delay(10);
-//  initCommmunication();
-//  delay(10);
-//  initActuators();
-//  delay(10);
-
+    initCommmunication();
+    delay(10);
+    initActuators();
+    delay(10);
+    initMonitor();
+    delay(10);
   }
 
   printf("========================\n");
@@ -79,7 +77,8 @@ void setup()
 
 void loop()
 {
-  sleep(10000); // TODO : does this make sense?
+  // just a very long wait-time, as Arduino-style loop is not used
+  vTaskDelay(3600000/portTICK_RATE_MS); 
 };
 
 // end of file

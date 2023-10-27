@@ -41,7 +41,6 @@
 
 //=============================================
 
-#define CFG_COMM_USE_WIFIMANAGER    true
 #define CFG_COMM_USE_FIXEDCREDS     false
 #define CFG_COMM_CREDS_SSID         "bookesbeer"
 #define CFM_COMM_CREDS_PASSWD       "password"
@@ -50,23 +49,27 @@
 #define CFG_COMM_ONLINE_TIMEOUT     120
 
 #define CFG_COMM_BBAPI_URL_BASE     "https://bricks.bierbot.com/api/iot/v1"
-#define CFG_COMM_DEVICE_TYPE        "bookesbrick" 
-#define CFG_COMM_DEVICE_BRAND       "bookesbeer" 
+// #define CFG_COMM_DEVICE_TYPE        "bookesbrick" 
+#define CFG_COMM_DEVICE_TYPE        "bookes" 
+// #define CFG_COMM_DEVICE_BRAND       "bookesbeer" 
+#define CFG_COMM_DEVICE_BRAND       "bierbot" 
 #define CFG_COMM_DEVICE_VERSION     "0.2" 
 
 #define CFG_COMM_WM_DEBUG            true
-#define cfg_COMM_WM_RESET_SETTINGS   false
-#define CFG_COMM_WM_USE_DRD          true
+#define cfg_COMM_WM_RESET_SETTINGS   false // TODO: CHECK
+#define CFG_COMM_WM_USE_DRD          false
 #define CFG_COMM_WM_USE_PIN          true
-#define CFG_COMM_WM_PORTAL_PIN       5
-#define CFG_COMM_HOSTNAME           "bookesbrick1"
+#define CFG_COMM_WM_PORTAL_PIN       GPIO_NUM_4
+#define CFG_COMM_HOSTNAME           "bookesbrick"
 
 //=============================================
 
-#define BBPREFS                     "bbbrick"
-#define BBAPIKEYID                  "bbApiKey"
-#define BBAPIKEYLABEL               "BierBot API-key"
-#define BBPORTALTIMEOUT             180
+#define BBPREFS                     "bbPrefs"
+#define BBPREFS_APIKEY              "bbPrApiKey"
+#define BBPREFS_SSID                "bbPrSSID"
+#define BBPREFS_PASSWD              "bbPrPasswd"
+#define BBPREFS_HOSTNAME            "bbPrHostname"
+
 #define BBDRDTIMEOUT                10
 #define BBPINGURL                   "8.8.8.8"
 
@@ -76,12 +79,15 @@
 typedef struct configValues
 {
   bool inConfigMode;
+  String SSID;
+  String passwd;
   String apiKey; 
+  String hostname;
 } configValues_t;
 
 extern configValues_t config;
 
-extern void initConfigPortal(void);
+void initWiFi(bool);
 extern void initWiFi(void);
 extern bool checkBootConfigMode(void);
 
