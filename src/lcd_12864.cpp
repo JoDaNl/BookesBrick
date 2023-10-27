@@ -1,5 +1,5 @@
 //
-// i2c_lcd_16x2.cpp
+// lcd_128x64.cpp
 //
 
 #include "config.h"
