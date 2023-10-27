@@ -12,7 +12,7 @@
 #include "sensors.h"
 #include "monitor.h"
 #include "actuators.h"
-#include "i2c_lcd_16x2.h"
+//#include "i2c_lcd_16x2.h"
 
 
 
@@ -27,7 +27,7 @@ void setup()
 
   while (!Serial)
     ;   // wait for Serial to become available
-  delay(200);
+  delay(100);
 
   // Welcome message
   printf("\n");
@@ -37,7 +37,7 @@ void setup()
 
 
 #if (CFG_COMM_WM_USE_PIN == true)
-  //check button state at power-up
+  //check config button state at power-up
   config.inConfigMode = checkBootConfigMode();
 #endif
 
@@ -45,23 +45,29 @@ void setup()
   
   initBlinkLed(CFG_LED_PIN);
   delay(10);
-  initDisplay(); 
+//  initDisplay(); 
   delay(10);
 
   initController();
   delay(10);
 
-  if (!config.inConfigMode)
+  if (config.inConfigMode)
   {
-//  initWifiMan();
-//  delay(10);
+    initConfigPortal();
+  }
+  else
+  {
+    initWiFi();
+    delay(10);
+    initSensors();
+    delay(10);
 //  initMonitor();
 //  delay(10);
 //  initCommmunication();
 //  delay(10);
 //  initActuators();
 //  delay(10);
-    initSensors();
+
   }
 
   printf("========================\n");

@@ -25,7 +25,11 @@
 // module scope
 static WiFiManager wm;
 static bool wmSaveConfig = false;
-static uint64_t chipId;
+static TaskHandle_t wifiCheckTaskHandle = NULL;
+
+#if (CFG_COMM_WM_USE_DRD == true)
+static TaskHandle_t drdTaskHandle = NULL;
+#endif
 
 #if (CFG_COMM_WM_USE_DRD == true)
 static DoubleResetDetector *drd;
@@ -36,15 +40,6 @@ configValues_t config;
 
 static Preferences prefs;
 
-// ============================================================================
-// WIFIMANAGER CALLBACK
-// ============================================================================
-
-static void saveConfigCallback()
-{
-  printf("[CONFIG] WiFiManager callback : save config\n");
-  wmSaveConfig = true;
-}
 
 
 // ============================================================================
@@ -98,6 +93,40 @@ bool checkBootConfigMode(void)
 }
 
 
+// ============================================================================
+// DRD TASK
+// ============================================================================
+#if (CFG_COMM_WM_USE_DRD == true)      
+static void drdTask(void *arg)
+{
+
+  printf("[CONFIG] Entering DRD loop...\n");
+
+  // TASK LOOP
+  while (true)
+  {
+//    printf("[CONFIG] drd.loop \n");
+    drd->loop();
+
+    // loop delay
+    vTaskDelay(2000 / portTICK_RATE_MS);
+  }
+
+};
+
+static void initDRD(void)
+{
+  bool status;
+
+  printf("[CONFIG] initDRD..\n");
+
+  // create task first...in order to have LED blinking
+  xTaskCreate(drdTask, "drdTask", 4096, NULL, 10, &drdTaskHandle);
+
+}
+#endif      
+
+
 // ===========================================================
 // READ CONFIG SETTINGS FROM EEPROM
 // ===========================================================
@@ -120,22 +149,33 @@ static void writeConfigValues(void)
   printf("[CONFIG]  - apiKey=%s\n", config.apiKey.c_str());
 
   prefs.begin(BBPREFS, false); // write mode
-  prefs.putString(BBAPIKEYID, config.apiKey);
+  prefs.putString(BBAPIKEYID, config.apiKey.c_str());
   prefs.end();
+}
+
+// ============================================================================
+// WIFIMANAGER CALLBACK
+// ============================================================================
+
+static void saveConfigCallback()
+{
+  printf("[CONFIG] WiFiManager callback : save config\n");
+  wmSaveConfig = true;
 }
 
 
 // ==========================================================
-// START CONFIG PORTAL
+// START WIFIMANAGER CONFIG PORTAL
 // ==========================================================
 
-void startConfigPortal(void)
+void initConfigPortal(void)
 {
   static bool status;
   
   printf("[CONFIG] Starting config portal\n\n");
 
-  readConfigValues();
+  initDRD();
+//  readConfigValues();
 
   // Optionally reset WifiManager settings
 #if (CFG_COMM_WM_RESET_SETTINGS == true)
@@ -166,18 +206,57 @@ void startConfigPortal(void)
   // Start the config portal / blocking call
   status = wm.startConfigPortal(CFG_COMM_SSID_PORTAL);
   printf("[CONFIG] Portal closed. Status=%d\n\n", status);
+  vTaskDelay(2000 / portTICK_RATE_MS);
 
   if (wmSaveConfig)
   {
-    // Save custom parameter to 'preferences'
+    // Save custom parameter to 'preferences'   
     config.apiKey = bbApiKey.getValue();
-    writeConfigValues();
+    printf("[CONFIG got api-key from portal: %s\n",config.apiKey.c_str());
+    writeConfigValues();   
   }
 
-  vTaskDelay(1000 / portTICK_RATE_MS);
+  vTaskDelay(2000 / portTICK_RATE_MS);
   ESP.restart();
     
 }
+
+
+
+
+// ============================================================================
+// WIFI CHECK TASK
+// ============================================================================
+
+static void wifiCheckTask(void *arg)
+{
+  static bool status;
+
+  printf("[CONFIG] Entering task loop...\n");
+
+  // TASK LOOP
+  while (true)
+  {
+    // Check WiFi status..only in normal operation  mode...do not check Wifi when portal is open
+    if (!config.inConfigMode)
+    {
+//      printf("[CONFIG] Check WIFI...\n");
+
+      if (WiFi.status() != WL_CONNECTED)
+      {
+        printf("[CONFIG] Reconnecting to WiFi...\n");
+        WiFi.reconnect();
+      }
+    }
+
+    // loop delay
+    vTaskDelay(2000 / portTICK_RATE_MS);
+  }
+
+};
+
+
+
 
 
 // ============================================================================
@@ -191,6 +270,15 @@ void initWiFi(void)
   printf("[CONFIG] WiFiManager Autoconnect started..\n");
   status = wm.autoConnect(CFG_COMM_SSID_PORTAL);
   printf("[CONFIG] WiFimanager autoconnect status=%d\n", status);
+
+  initDRD();
+
+  // config.apiKey = "123456AB";
+  // vTaskDelay(2000 / portTICK_RATE_MS);
+  // writeConfigValues();
+  // vTaskDelay(2000 / portTICK_RATE_MS);
+  readConfigValues();
+  // vTaskDelay(2000 / portTICK_RATE_MS);
 
 
 #ifdef BBPINGURL
@@ -211,8 +299,22 @@ void initWiFi(void)
   }
 #endif
 
+
+  // create task first...in order to have LED blinking
+  xTaskCreate(wifiCheckTask, "wifiCheckTask", 4096, NULL, 10, &wifiCheckTaskHandle);
+
+
   printf("[CONFIG] initWifi() DONE\n");
 }
+
+
+
+
+
+
+
+
+
 
 
 // end of file

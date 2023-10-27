@@ -5,7 +5,6 @@
 #include "config.h"
 #include <Arduino.h>
 #include "actuators.h"
-#include "i2c_lcd_16x2.h"
 
 // GLOBALS
 xQueueHandle actuatorsQueue = NULL;
@@ -28,9 +27,6 @@ static void actuatorsTask(void *arg)
   static uint16_t offDelaySec0;
   static uint16_t offDelaySec1;
 
-  static displayQueueItem_t displayQMesg;
-
-  displayQMesg.type = e_actuator;
 
   // TODO : make configurable
   pinMode(CFG_RELAY0_PIN, OUTPUT);
@@ -87,10 +83,10 @@ static void actuatorsTask(void *arg)
 
     if (actuatorReqeuest0 && !actuatorActual0)
     {
-      displayQMesg.index = 0; 
-      displayQMesg.data.actuator = 1;
-      displayQMesg.duration = onDelaySec0;
-      xQueueSend(displayQueue, &displayQMesg, 0);
+      // displayQMesg.index = 0; 
+      // displayQMesg.data.actuator = 1;
+      // displayQMesg.duration = onDelaySec0;
+      // xQueueSend(displayQueue, &displayQMesg, 0);
     }
 
     // switch on if onDelay is not counting
@@ -116,10 +112,10 @@ static void actuatorsTask(void *arg)
 
     if (!actuatorReqeuest0 && actuatorActual0)
     {
-      displayQMesg.index = 0; 
-      displayQMesg.data.actuator = 0;
-      displayQMesg.duration = offDelaySec0;
-      xQueueSend(displayQueue, &displayQMesg, 0);
+      // displayQMesg.index = 0; 
+      // displayQMesg.data.actuator = 0;
+      // displayQMesg.duration = offDelaySec0;
+      // xQueueSend(displayQueue, &displayQMesg, 0);
     }
 
     // switch off if offDelay is not counting
@@ -150,10 +146,10 @@ static void actuatorsTask(void *arg)
 
     if (actuatorReqeuest1 && !actuatorActual1)
     {
-      displayQMesg.index = 1; 
-      displayQMesg.data.actuator = 1;
-      displayQMesg.duration = onDelaySec1;
-      xQueueSend(displayQueue, &displayQMesg, 0);
+      // displayQMesg.index = 1; 
+      // displayQMesg.data.actuator = 1;
+      // displayQMesg.duration = onDelaySec1;
+      // xQueueSend(displayQueue, &displayQMesg, 0);
     }
 
     // switch on if onDelay is not counting
@@ -179,10 +175,10 @@ static void actuatorsTask(void *arg)
 
     if (!actuatorReqeuest1 && actuatorActual1)
     {
-      displayQMesg.index = 1; 
-      displayQMesg.data.actuator = 0;
-      displayQMesg.duration = offDelaySec1;
-      xQueueSend(displayQueue, &displayQMesg, 0);
+      // displayQMesg.index = 1; 
+      // displayQMesg.data.actuator = 0;
+      // displayQMesg.duration = offDelaySec1;
+      // xQueueSend(displayQueue, &displayQMesg, 0);
     }
 
     // switch off if offDelay is not counting

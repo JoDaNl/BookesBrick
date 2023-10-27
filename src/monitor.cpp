@@ -6,7 +6,7 @@
 
 #include <Arduino.h>
 #include "monitor.h"
-#include "i2c_lcd_16x2.h"
+//#include "i2c_lcd_16x2.h"
 
 // Queue
 xQueueHandle monitorQueue = NULL;
@@ -21,7 +21,7 @@ static TaskHandle_t monitorTaskHandle = NULL;
 static void monitorTask(void *arg)
 {
   static uint8_t qReceiveMesg;
-  static displayQueueItem_t qDisplayMesg;
+//  static displayQueueItem_t qDisplayMesg;
   static uint16_t onlineTimeoutCount = CFG_COMM_ONLINE_TIMEOUT;
   static uint8_t blink = 0;
 
@@ -38,11 +38,11 @@ static void monitorTask(void *arg)
         onlineTimeoutCount = CFG_COMM_ONLINE_TIMEOUT;
       }
 
-      qDisplayMesg.type = e_error;
-      qDisplayMesg.data.error = qReceiveMesg; // when 0 --> online
-      qDisplayMesg.index = 0;
-      qDisplayMesg.duration = 0;
-      xQueueSend(displayQueue, &qDisplayMesg, 0);
+      // qDisplayMesg.type = e_error;
+      // qDisplayMesg.data.error = qReceiveMesg; // when 0 --> online
+      // qDisplayMesg.index = 0;
+      // qDisplayMesg.duration = 0;
+      // xQueueSend(displayQueue, &qDisplayMesg, 0);
     }
 
     if (onlineTimeoutCount > 0)
@@ -53,22 +53,22 @@ static void monitorTask(void *arg)
     if (onlineTimeoutCount == 0)
     {
       // printf("[MONITOR] OFFLINE detected\n");
-      qDisplayMesg.type = e_error;
-      qDisplayMesg.data.error = 1; // TODO : replace by constants/defines...  1=offline
-      qDisplayMesg.index = 0;
-      qDisplayMesg.duration = 0;
-      xQueueSend(displayQueue, &qDisplayMesg, 0);      
+      // qDisplayMesg.type = e_error;
+      // qDisplayMesg.data.error = 1; // TODO : replace by constants/defines...  1=offline
+      // qDisplayMesg.index = 0;
+      // qDisplayMesg.duration = 0;
+      // xQueueSend(displayQueue, &qDisplayMesg, 0);      
     }
 
     // printf("[MONITOR] Time-out counter=%d\n",onlineTimeoutCount);
 
 
     // send heartbeat message to display
-    qDisplayMesg.type = e_heartbeat;
-    qDisplayMesg.index = 0;
-    qDisplayMesg.duration = 0;
-    qDisplayMesg.data.heartbeat = blink;
-    xQueueSend(displayQueue, &qDisplayMesg, 0);
+    // qDisplayMesg.type = e_heartbeat;
+    // qDisplayMesg.index = 0;
+    // qDisplayMesg.duration = 0;
+    // qDisplayMesg.data.heartbeat = blink;
+    // xQueueSend(displayQueue, &qDisplayMesg, 0);
 
     blink = !blink;
   }

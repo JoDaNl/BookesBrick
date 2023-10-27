@@ -27,10 +27,21 @@ void controllerTask(void *arg)
 
   static blinkLedQMesg_t blinkLedQMesg;
 
-  blinkLedQMesg.mesgId = e_msg_blinkled_blink;
-  blinkLedQMesg.onTimeMs = 100;
-  blinkLedQMesg.offTimeMs = 500;
+
+  if (config.inConfigMode)
+  {
+    blinkLedQMesg.mesgId = e_msg_blinkled_blink;
+    blinkLedQMesg.onTimeMs = 10;
+    blinkLedQMesg.offTimeMs = 200;
+  }
+  else
+  {
+    blinkLedQMesg.mesgId = e_msg_blinkled_blink;
+    blinkLedQMesg.onTimeMs = 500;
+    blinkLedQMesg.offTimeMs = 1500;
+  }
   xQueueSend(blinkLedQueue, &blinkLedQMesg , 0);
+
 
   while (true)
   {

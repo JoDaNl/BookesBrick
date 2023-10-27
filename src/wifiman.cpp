@@ -6,9 +6,9 @@
 #include <Arduino.h>
 #include <preferences.h>
 
-#include <WifiManager.h>
+//#include <WifiManager>
+#include <ESPAsync_WiFiManager_lite.h>
 #include "wifiman.h"
-#include "i2c_lcd_16x2.h"
 
 
 // module scope
@@ -25,12 +25,12 @@ static bool initWifiDone = false;
 static void wifimanTask(void *arg)
 {
   static bool status;
-  static displayQueueItem_t displayQMesg;
+  // static displayQueueItem_t displayQMesg;
 
   // Message for display task
-  displayQMesg.type = e_wifiInfo;
-  displayQMesg.index = 0;
-  displayQMesg.duration = 10; // seconds
+  // displayQMesg.type = e_wifiInfo;
+  // displayQMesg.index = 0;
+  // displayQMesg.duration = 10; // seconds
 
 
   // ===========================================================
@@ -56,7 +56,7 @@ static void wifimanTask(void *arg)
       vTaskDelay(1000 / portTICK_RATE_MS);
 #if (CFG_COMM_WM_USE_DRD == true)      
       printf("[WIFIMAN] drd->loop()\n");
-      drd->loop();
+//      drd->loop();
 #endif      
     }
     else

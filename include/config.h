@@ -65,8 +65,8 @@
 
 #define BBPREFS                     "bbbrick"
 #define BBAPIKEYID                  "bbApiKey"
-#define BBAPIKEYLABEL               "BB API-key"
-#define BBPORTALTIMEOUT             120
+#define BBAPIKEYLABEL               "BierBot API-key"
+#define BBPORTALTIMEOUT             180
 #define BBDRDTIMEOUT                10
 #define BBPINGURL                   "8.8.8.8"
 
@@ -81,6 +81,8 @@ typedef struct configValues
 
 extern configValues_t config;
 
+extern void initConfigPortal(void);
+extern void initWiFi(void);
 extern bool checkBootConfigMode(void);
 
 #endif
