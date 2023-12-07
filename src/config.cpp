@@ -140,6 +140,7 @@ static void initDRD(void)
 static void printConfig(void)
 {
   printf("[CONFIG]   apiKey=%s\n",    config.apiKey.c_str());
+  printf("[CONFIG]   proApiKey=%s\n", config.proApiKey.c_str());
   printf("[CONFIG]   SSID=%s\n",      config.SSID.c_str());
   printf("[CONFIG]   passwd=%s\n",    config.passwd.c_str());
   printf("[CONFIG]   hostname=%s\n",  config.hostname.c_str());
@@ -149,10 +150,11 @@ static void printConfig(void)
 static void readConfig(void)
 {
   prefs.begin(BBPREFS, true);  // read only mode
-  config.apiKey   = prefs.getString(BBPREFS_APIKEY, "");
-  config.SSID     = prefs.getString(BBPREFS_SSID,   "");
-  config.passwd   = prefs.getString(BBPREFS_PASSWD, "");
-  config.hostname = prefs.getString(BBPREFS_HOSTNAME , CFG_COMM_HOSTNAME); 
+  config.apiKey     = prefs.getString(BBPREFS_APIKEY,     "");
+  config.proApiKey  = prefs.getString(BBPREFS_PROAPIKEY,  "");
+  config.SSID       = prefs.getString(BBPREFS_SSID,       "");
+  config.passwd     = prefs.getString(BBPREFS_PASSWD,     "");
+  config.hostname   = prefs.getString(BBPREFS_HOSTNAME , CFG_COMM_HOSTNAME); 
   prefs.end();
   
   printf("[CONFIG] readConfig\n");
@@ -170,10 +172,11 @@ static void writeConfig(void)
   printConfig();
 
   prefs.begin(BBPREFS, false); // write mode
-  prefs.putString(BBPREFS_APIKEY,   config.apiKey.c_str());
-  prefs.putString(BBPREFS_SSID,     config.SSID.c_str());
-  prefs.putString(BBPREFS_PASSWD,   config.passwd.c_str());
-  prefs.putString(BBPREFS_HOSTNAME, config.hostname.c_str());
+  prefs.putString(BBPREFS_APIKEY,     config.apiKey.c_str());
+  prefs.putString(BBPREFS_PROAPIKEY,  config.proApiKey.c_str());
+  prefs.putString(BBPREFS_SSID,       config.SSID.c_str());
+  prefs.putString(BBPREFS_PASSWD,     config.passwd.c_str());
+  prefs.putString(BBPREFS_HOSTNAME,   config.hostname.c_str());
   prefs.end();
 }
 
@@ -271,6 +274,10 @@ String htmlProcessor(const String& str)
   {
     return config.apiKey;
   }
+  if (str == "proapikey")
+  {
+    return config.proApiKey;
+  }
   if (str == "SSID")
   {
     return config.SSID;
@@ -323,6 +330,11 @@ void startConfigPortal()
           if (pName.equals("apikey"))
           {
             config.apiKey = pValue;
+          }
+
+          if (pName.equals("proapikey"))
+          {
+            config.proApiKey = pValue;
           }
           
           if (pName.equals("SSID"))

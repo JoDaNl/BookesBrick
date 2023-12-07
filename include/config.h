@@ -66,6 +66,7 @@
 
 #define BBPREFS                     "bbPrefs"
 #define BBPREFS_APIKEY              "bbPrApiKey"
+#define BBPREFS_PROAPIKEY           "bbPrProApiKey"
 #define BBPREFS_SSID                "bbPrSSID"
 #define BBPREFS_PASSWD              "bbPrPasswd"
 #define BBPREFS_HOSTNAME            "bbPrHostname"
@@ -82,6 +83,7 @@ typedef struct configValues
   String SSID;
   String passwd;
   String apiKey; 
+  String proApiKey; 
   String hostname;
 } configValues_t;
 

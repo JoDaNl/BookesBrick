@@ -16,10 +16,10 @@
 #include "controller.h"
 #include "comms.h"
 
-// #define  SENSOR_SIMULATION 1
+#define  CFG_SENSOR_SIMULATION 1
 
 // Temperature sensor
-#define SMOOTH_SAMPLES  (7) // must be odd number
+#define CFG_SMOOTH_SAMPLES  (7) // must be odd number
 
 // Loop delay
 #define DELAY (2000)
@@ -45,12 +45,12 @@ void sensorsTask(void *arg)
 
   static OneWire oneWire(CFG_TEMP_PIN);
   static DallasTemperature sensors(&oneWire);
-  static Smooth<SMOOTH_SAMPLES> smooth;
+  static Smooth<CFG_SMOOTH_SAMPLES> smooth;
 
   smooth.setMaxDeviation(10); // 1 degree
 
 
-#ifndef SENSOR_SIMULATION
+#ifndef CFG_SENSOR_SIMULATION
   // set-up DS18B20 temperature sensor(s)
   sensors.begin();
   sensors.setResolution(12);
@@ -75,7 +75,7 @@ void sensorsTask(void *arg)
   {
     // printf("[SENSORS] LOOP..\n");
 
-#ifndef SENSOR_SIMULATION
+#ifndef CFG_SENSOR_SIMULATION
     if (numSensors > 0)
     {
       tempValid = false;
@@ -93,7 +93,7 @@ void sensorsTask(void *arg)
       printf("[SENSORS] NO TEMPERATURE SENSOR DEFINED\n");
 #endif
 
-#else // SENSOR_SIMULATION
+#else // CFG_SENSOR_SIMULATION
      {
       tempSens = 5.0 + rand()*30.0/RAND_MAX;
       tempError = false;

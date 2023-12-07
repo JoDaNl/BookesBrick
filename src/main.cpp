@@ -43,6 +43,8 @@ void setup()
   config.inConfigMode = checkBootConfigMode();
 #endif
 
+  // config.inConfigMode = true;
+
   // Start all tasks
   
   initBlinkLed(CFG_LED_PIN);
