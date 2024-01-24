@@ -101,7 +101,8 @@ void controllerTask(void *arg)
               displayQMesg.type             = e_temperature;
               displayQMesg.data.temperature = qMesgRecv.mesg.sensorMesg.data;
               displayQMesg.valid            = qMesgRecv.valid;
-              xQueueSend(displayQueue2, &displayQMesg , 0);
+              displayQueueSend(&displayQMesg , 0);
+              // xQueueSend(displayQueue, &displayQMesg , 0);
               break;
             default:
               break;
@@ -123,7 +124,9 @@ void controllerTask(void *arg)
               displayQMesg.type = e_actuator;
               displayQMesg.data.actuators = qMesgRecv.mesg.backendMesg.data;
               displayQMesg.valid          = qMesgRecv.mesg.backendMesg.valid;
-              xQueueSend(displayQueue2, &displayQMesg , 0);
+              displayQueueSend(&displayQMesg , 0);
+              // xQueueSend(displayQueue, &displayQMesg , 0);
+
               break;
             case e_msg_backend_act_delay:
               printf("[CONTROL] received e_msg_backend_act_delay, nr=%d, data=%d\n",qMesgRecv.mesg.backendMesg.number, qMesgRecv.mesg.backendMesg.data);
@@ -133,7 +136,8 @@ void controllerTask(void *arg)
               displayQMesg.number     = qMesgRecv.mesg.backendMesg.number;
               displayQMesg.data.compDelay = qMesgRecv.mesg.backendMesg.data;
               displayQMesg.valid       = true; 
-              xQueueSend(displayQueue2, &displayQMesg , 0);
+              displayQueueSend(&displayQMesg , 0);
+              // xQueueSend(displayQueue, &displayQMesg , 0);
               break;
             case e_msg_backend_heartbeat:
               printf("[CONTROL] received e_msg_backend_heartbeat, data=%d\n", qMesgRecv.mesg.backendMesg.data);
@@ -145,7 +149,8 @@ void controllerTask(void *arg)
               displayQMesg.type       = e_heartbeat;
               displayQMesg.data.heartOn = true;
               displayQMesg.valid      = qMesgRecv.mesg.backendMesg.valid;
-              xQueueSend(displayQueue2, &displayQMesg , 0);
+              displayQueueSend(&displayQMesg , 0);
+              // xQueueSend(displayQueue, &displayQMesg , 0);
               break;
 
             case e_msg_backend_temp_setpoint:
@@ -155,7 +160,8 @@ void controllerTask(void *arg)
               displayQMesg.type          = e_setpoint;
               displayQMesg.data.setPoint = qMesgRecv.mesg.backendMesg.data;
               displayQMesg.valid         = qMesgRecv.mesg.backendMesg.valid;
-              xQueueSend(displayQueue2, &displayQMesg , 0);
+              displayQueueSend(&displayQMesg , 0);
+              // xQueueSend(displayQueue, &displayQMesg , 0);
               break;
 
             default:
@@ -175,7 +181,8 @@ void controllerTask(void *arg)
               displayQMesg.type             = e_rssi;
               displayQMesg.data.temperature = qMesgRecv.mesg.WiFiMesg.data;
               displayQMesg.valid            = true; 
-              xQueueSend(displayQueue2, &displayQMesg , 0);
+              displayQueueSend(&displayQMesg , 0);
+              // xQueueSend(displayQueue, &displayQMesg , 0);
               break;
             default:
               break;
@@ -196,7 +203,8 @@ void controllerTask(void *arg)
       // send heartbeat-timeout information to display
       displayQMesg.type         = e_heartbeat;
       displayQMesg.data.heartOn = false;
-      xQueueSend(displayQueue2, &displayQMesg , 0);
+      displayQueueSend(&displayQMesg , 0);
+      // xQueueSend(displayQueue, &displayQMesg , 0);
     }
 
   }

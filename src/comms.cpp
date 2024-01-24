@@ -79,6 +79,10 @@ static uint16_t getActuatorsFromBackend(String &tempUrl, uint16_t sensorId, uint
     // See: https://arduinojson.org/v6/issues/cannot-get-values/
 
     response = http.getString();
+
+    // fix the response due to some unwanted escaping...
+    //...see : https://forum.bierbot.com/viewtopic.php?p=441#p441
+
     printf("[COMMS] response TEMP (received)  =%s\n", response.c_str());
     response.replace("\"[\\", "[");
     response.replace("\\\"]\"", "\"]");
@@ -147,47 +151,6 @@ static uint16_t getActuatorsFromBackend(String &tempUrl, uint16_t sensorId, uint
 
       actuators = actuators | (updatedActuator & 1) << 1;
 
-
-      usedForDevicesValid = false; // default
-
-      if (jsonResponseDoc.containsKey("used_for_devices"))
-      {
-        JsonArray devices;
-        JsonVariant device;
-
-
-        // StaticJsonDocument<1024> jsonResponseDoc2;
-        // DeserializationError deserialisationError2 = deserializeJson(jsonResponseDoc2, jsonResponseDoc["used_for_devices"]);
-
-
-
-        devices = jsonResponseDoc["used_for_devices"].as<JsonArray>();
-        String d = jsonResponseDoc["used_for_devices"];
-        printf("[COMMS] ==> d = %s\n", d.c_str());
-        printf("[COMMS] ==> l = %d\n", d.length());
-
-
-        printf("[COMMS] devices.size() = %d\n", devices.size());
-
-
-        // if (dsvices.size()>0)
-        {
-          for (int i = 0; i < devices.size(); i++)
-          {
-            device = devices[i];
-            usedForDevicesValue = device.as<String>();
-            printf("[COMMS] usedForDevices[%d] : %s\n", i, usedForDevicesValue.c_str());
-          }
-          usedForDevicesValid = true;
-        }
-        // else
-        // {
-        //   printf("[COMMS] used_for_devices not received\n");
-        // }
-      }
-
-       usedForDevicesValid = true;
-
       // send actuators to controller
       if (actuators != actuatorsPrev)
       {
@@ -198,6 +161,33 @@ static uint16_t getActuatorsFromBackend(String &tempUrl, uint16_t sensorId, uint
         controllerMesg.mesg.backendMesg.valid = true;
         xQueueSend(controllerQueue, &controllerMesg, 0);
       }
+
+
+      usedForDevicesValid = false; // default
+
+      if (jsonResponseDoc.containsKey("used_for_devices"))
+      {
+        JsonArray devices;
+        JsonVariant device;
+
+        devices = jsonResponseDoc["used_for_devices"].as<JsonArray>();
+
+        if (devices.size()>0)
+        {
+          for (int i = 0; i < devices.size(); i++)
+          {
+            device = devices[i];
+            usedForDevicesValue = device.as<String>();
+            printf("[COMMS] usedForDevices[%d] : %s\n", i, usedForDevicesValue.c_str());
+          }
+          usedForDevicesValid = true;
+        }
+        else
+        {
+          printf("[COMMS] used_for_devices not received\n");
+        }
+      }
+
 
       // Send heartbeat message
       controllerMesg.type = e_mtype_backend;
@@ -224,107 +214,107 @@ static uint16_t getActuatorsFromBackend(String &tempUrl, uint16_t sensorId, uint
   return nextTempRequestSecValue;
 }
 
+
 // ============================================================================
 // GET UPDATED LCD INFO FROM BACKEND
 // - See : https://forum.bierbot.com/viewtopic.php?t=68
 // ============================================================================
 
-static uint16_t getLCDInfoFromBackend(String &UrlLCD)
-{
-  static int getResponse;
-  static uint32_t nextLCDReqMs;
-  static uint16_t nextLCDRequestSec;
-  static String response;
-  static controllerQItem_t controllerMesg;
+// static uint16_t getLCDInfoFromBackend(String &UrlLCD)
+// {
+//   static int getResponse;
+//   static uint32_t nextLCDReqMs;
+//   static uint16_t nextLCDRequestSec;
+//   static String response;
+//   static controllerQItem_t controllerMesg;
 
-  static bool setPointValid;
-  static int16_t setPointValue;
+//   static bool setPointValid;
+//   static int16_t setPointValue;
 
-  nextLCDRequestSec = 60;
-  setPointValid = false;
-  setPointValue = 0;
+//   nextLCDRequestSec = 60;
+//   setPointValid = false;
+//   setPointValue = 0;
 
-  printf("[COMMS] LCD API url=%s\n", UrlLCD.c_str());
+//   printf("[COMMS] LCD API url=%s\n", UrlLCD.c_str());
 
-  http.begin(UrlLCD);
-  getResponse = http.GET();
+//   http.begin(UrlLCD);
+//   getResponse = http.GET();
 
-  if (getResponse > 0)
-  {
-    response = http.getString();
+//   if (getResponse > 0)
+//   {
+//     response = http.getString();
 
-    printf("[COMMS] Received response from LCD API\n");
-    printf("[COMMS] response LCD=%s\n", response.c_str());
+//     printf("[COMMS] Received response from LCD API\n");
+//     printf("[COMMS] response LCD=%s\n", response.c_str());
 
+//     DeserializationError deserialisationError = deserializeJson(jsonResponseDoc, response.c_str());
 
-    DeserializationError deserialisationError = deserializeJson(jsonResponseDoc, response.c_str());
+//     JsonArray brews;
+//     JsonObject brew;
 
-    JsonArray brews;
-    JsonObject brew;
+//     if (deserialisationError)
+//     {
+//       printf("[COMMS] deserializeJson() failed: %s\n", deserialisationError.f_str());
+//     }
+//     else
+//     {
+//       if (jsonResponseDoc["result"] == "success")
+//       {
+//         uint16_t targetTemp;
 
-    if (deserialisationError)
-    {
-      printf("[COMMS] deserializeJson() failed: %s\n", deserialisationError.f_str());
-    }
-    else
-    {
-      if (jsonResponseDoc["result"] == "success")
-      {
-        uint16_t targetTemp;
+//         if (jsonResponseDoc.containsKey("next_request_ms"))
+//         {
+//           printf("[COMMS]   next_request_ms=%ld\n", jsonResponseDoc["next_request_ms"].as<long>());
+//           nextLCDReqMs = jsonResponseDoc["next_request_ms"].as<long>();
+//           nextLCDRequestSec = nextLCDReqMs / 1000;
+//         }
 
-        if (jsonResponseDoc.containsKey("next_request_ms"))
-        {
-          printf("[COMMS]   next_request_ms=%ld\n", jsonResponseDoc["next_request_ms"].as<long>());
-          nextLCDReqMs = jsonResponseDoc["next_request_ms"].as<long>();
-          nextLCDRequestSec = nextLCDReqMs / 1000;
-        }
+//         if (jsonResponseDoc.containsKey("brews"))
+//         {
+//           float bTemp;
+//           String bId;
+//           String bName;
 
-        if (jsonResponseDoc.containsKey("brews"))
-        {
-          float bTemp;
-          String bId;
-          String bName;
+//           brews = jsonResponseDoc["brews"];
+//           printf("[COMMS]   brews num=%d\n", brews.size());
+//           for (int i = 0; i < brews.size(); i++)
+//           {
+//             brew = brews[i];
+//             bTemp = brew["targetTemperatureC"].as<float>();
+//             bName = brew["name"].as<String>();
+//             bId = brew["id"].as<String>();
+//             printf("[COMMS]   targetTemp[%d]=%f\n", i, bTemp);
+//             printf("[COMMS]         name[%d]=%s\n", i, bName.c_str());
+//             printf("[COMMS]           id[%d]=%s\n", i, bId.c_str());
 
-          brews = jsonResponseDoc["brews"];
-          printf("[COMMS]   brews num=%d\n", brews.size());
-          for (int i = 0; i < brews.size(); i++)
-          {
-            brew = brews[i];
-            bTemp = brew["targetTemperatureC"].as<float>();
-            bName = brew["name"].as<String>();
-            bId = brew["id"].as<String>();
-            printf("[COMMS]   targetTemp[%d]=%f\n", i, bTemp);
-            printf("[COMMS]         name[%d]=%s\n", i, bName.c_str());
-            printf("[COMMS]           id[%d]=%s\n", i, bId.c_str());
+//             // For non-ferminting brewing steps the backend may report a (valid) temperature of 0.
+//             // The brick sees this as an invalid temperature
+//             if (bTemp > 0)
+//             {
+//               setPointValid = true;
+//               setPointValue = (int16_t)(bTemp * 10);
+//             }
+//           }
+//         }
+//         else
+//         {
+//           printf("[COMMS]   no active brews\n");
+//         }
+//       }
+//     }
+//   }
 
-            // For non-ferminting brewing steps the backend may report a (valid) temperature of 0.
-            // The brick sees this as an invalid temperature
-            if (bTemp > 0)
-            {
-              setPointValid = true;
-              setPointValue = (int16_t)(bTemp * 10);
-            }
-          }
-        }
-        else
-        {
-          printf("[COMMS]   no active brews\n");
-        }
-      }
-    }
-  }
+//   // Send target temperature to controller task
+//   controllerMesg.type = e_mtype_backend;
+//   controllerMesg.mesg.backendMesg.mesgId = e_msg_backend_temp_setpoint;
+//   controllerMesg.mesg.backendMesg.data = setPointValue;
+//   controllerMesg.mesg.backendMesg.valid = setPointValid;
+//   xQueueSend(controllerQueue, &controllerMesg, 0);
 
-  // Send target temperature to controller task
-  controllerMesg.type = e_mtype_backend;
-  controllerMesg.mesg.backendMesg.mesgId = e_msg_backend_temp_setpoint;
-  controllerMesg.mesg.backendMesg.data = setPointValue;
-  controllerMesg.mesg.backendMesg.valid = setPointValid;
-  xQueueSend(controllerQueue, &controllerMesg, 0);
+//   printf("[COMMS]---------------------------\n");
 
-  printf("[COMMS]---------------------------\n");
-
-  return nextLCDRequestSec;
-}
+//   return nextLCDRequestSec;
+// }
 
 
 static void initFilterDocs(void)
@@ -338,8 +328,12 @@ static void initFilterDocs(void)
 }
 
 
+// ============================================================================
+// QUERY PRO-API TO GET THE TEMPERATURE SET_POINT OF A ACTIVE BREW
+// - return value is next API-request (in sec)
+// ============================================================================
 
-static uint16_t getProAPIInfo()
+static uint16_t getProAPIInfo(String &urlProAPI)
 {
   static String response;
   static String URL;
@@ -352,7 +346,7 @@ static uint16_t getProAPIInfo()
 
   if (usedForDevicesValid)
   {
-    URL = "https://bricks.bierbot.com/api/device?apikey=" + config.apiKey + "&proapikey=" + config.proApiKey + "&deviceid=" + usedForDevicesValue;
+    URL = urlProAPI + "&deviceid=" + usedForDevicesValue;
 
     printf("[COMMS] PRO API url=%s\n", URL.c_str());
 
@@ -366,27 +360,26 @@ static uint16_t getProAPIInfo()
       printf("[COMMS] Received response from PRO API\n");
 //      printf("[COMMS] response PRO=%s\n", response.c_str());
 
-      DeserializationError error = deserializeJson(jsonResponseDoc, response.c_str(), DeserializationOption::Filter(proFilterDoc));
+      DeserializationError deserialisationError = deserializeJson(jsonResponseDoc, response.c_str(), DeserializationOption::Filter(proFilterDoc));
 
-      if (error)
+      if (deserialisationError)
       {
-        printf("[COMMS] PRO deserializeJson() failed: %s\n", error.f_str());
-        printf("[COMMS] PRO server response is:\n%s\n", response.c_str());
+        printf("[COMMS] PRO deserializeJson() failed: %s\n", deserialisationError.f_str());
       }
       else
       {
         // Extract values
         printf("[COMMS] PRO name            : %s\n", jsonResponseDoc["name"].as<String>().c_str());
         printf("[COMMS] PRO type            : %s\n", jsonResponseDoc["type"].as<String>().c_str());
+        printf("[COMMS] PRO active          : %s\n", jsonResponseDoc["active"].as<String>().c_str());
+        printf("[COMMS] Temperature         : %s\n", jsonResponseDoc["targetState"]["tempCelsius"].as<String>().c_str());
         // printf("[COMMS] PRO valid           : %s\n", jsonResponseDoc["valid"].as<String>().c_str());
         // printf("[COMMS] PRO blocked         : %s\n", jsonResponseDoc["blocked"].as<String>().c_str());
-        printf("[COMMS] PRO active          : %s\n", jsonResponseDoc["active"].as<String>().c_str());
         // printf("[COMMS] usedForProcessId    : %s\n", jsonResponseDoc["usedForProcessId"].as<String>().c_str());
         // printf("[COMMS] usedForProcessType  : %s\n", jsonResponseDoc["usedForProcessType"].as<String>().c_str());
-        printf("[COMMS] Temperature         : %s\n", jsonResponseDoc["targetState"]["tempCelsius"].as<String>().c_str());
 
         setPointValue = jsonResponseDoc["targetState"]["tempCelsius"].as<float>() * 10;
-
+        setPointValid = true;
       }
     }
     else
@@ -405,7 +398,7 @@ static uint16_t getProAPIInfo()
     printf("[COMMS] Skipping pro-API call as we have no valid device-id yet\n");
   }
 
-  return (15); // query every 15 seconds
+  return (30); // query every 30 seconds
 }
 
 // ============================================================================
@@ -430,9 +423,9 @@ static void communicationTask(void *arg)
   static uint64_t chipId;
 
   // BIERBOT urls
-  static String bbUrlTemp;
-  static String bbUrlLCD;
-  static const String cfgCommBBApiUrlbase = CFG_COMM_BBAPI_URL_BASE;
+  static String urlAPI;
+  static String urlProAPI;
+  
 
   // ACTUATORS
   static uint8_t actuator0 = 0;
@@ -446,17 +439,32 @@ static void communicationTask(void *arg)
   // Get MAC addres as unique ID for BB URL
   chipId = ESP.getEfuseMac();
 
-  bbUrlLCD = cfgCommBBApiUrlbase +
-             "?apikey=" + config.apiKey +
-             "&type=display" +
-             "&brand=oss" +
-             "&version=0.1" +
-             "&chipid=" + chipId +
-             "&d_object_information_0=4x20";
+  // bbUrlLCD = CFG_COMM_BBURL_API_BASE;
+  // bbUrlLCD = bbUrlLCD + CFG_COMM_BBURL_API_IOT +
+  //            "?apikey=" + config.apiKey +
+  //            "&type=display" +
+  //            "&brand=oss" +
+  //            "&version=0.1" +
+  //            "&chipid=" + chipId +
+  //            "&d_object_information_0=4x20";
+
+  urlAPI = CFG_COMM_BBURL_API_BASE;
+  urlAPI = urlAPI + CFG_COMM_BBURL_API_IOT +
+              "?apikey=" + config.apiKey +
+              "&type=" + CFG_COMM_DEVICE_TYPE +
+              "&brand=" + CFG_COMM_DEVICE_BRAND +
+              "&version=" + CFG_COMM_DEVICE_VERSION +
+              "&chipid=" + chipId;
+
+  urlProAPI = CFG_COMM_BBURL_API_BASE;
+  urlProAPI = urlProAPI + CFG_COMM_BBURL_PRO_API_DEVICE +
+          "?apikey=" + config.apiKey + 
+          "&proapikey=" + config.proApiKey;
+
 
   nextTempRequestSec = 10;
   nextLCDRequestSec = 15;
-  nextPRORequestSec = 15;
+  nextPRORequestSec = 30;
 
   // ===========================================================
   // TASK LOOP
@@ -480,17 +488,8 @@ static void communicationTask(void *arg)
       }
       else
       {
-
-        bbUrlTemp = cfgCommBBApiUrlbase +
-                    "?apikey=" + config.apiKey +
-                    "&type=" + CFG_COMM_DEVICE_TYPE +
-                    "&brand=" + CFG_COMM_DEVICE_BRAND +
-                    "&version=" + CFG_COMM_DEVICE_VERSION +
-                    "&chipid=" + chipId;
-
-        // Call to back-end
         // TODO : sensorId is hard-coded to 0
-        nextTempRequestSec = getActuatorsFromBackend(bbUrlTemp, 0, temperature);
+        nextTempRequestSec = getActuatorsFromBackend(urlAPI, 0, temperature);
       }
 
       // if (nextLCDRequestSec > 0)
@@ -512,7 +511,7 @@ static void communicationTask(void *arg)
       else
       {
         // Call to back-end
-        nextPRORequestSec = getProAPIInfo();
+        nextPRORequestSec = getProAPIInfo(urlProAPI);
       }
     }
 

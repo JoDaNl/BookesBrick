@@ -49,7 +49,7 @@ void setup()
   
   initBlinkLed(CFG_LED_PIN);
   delay(10);
-  initDisplay2(); 
+  initDisplay(); 
   delay(10);
 
   initController();

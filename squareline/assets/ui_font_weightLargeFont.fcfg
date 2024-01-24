@@ -1,0 +1,14 @@
+{
+  "codename": "weightLargeFont",
+  "ttf_path": "\\assets\\digital-7 (mono italic).ttf",
+  "bin_path": "\\assets\\ui_font_weightLargeFont.bin",
+  "c_path": "\\assets\\ui_font_weightLargeFont.c",
+  "cfg_path": "\\assets\\ui_font_weightLargeFont.fcfg",
+  "size": 200,
+  "bpp": 8,
+  "letters": 0,
+  "ranges": [],
+  "symbols": "+-.0123456789hilo",
+  "customparams": "--no-compress --no-prefilter",
+  "uploaded": false
+}

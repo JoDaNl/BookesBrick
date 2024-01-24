@@ -2,6 +2,8 @@
 // i2c_lcd_16x2.cpp
 //
 
+#ifdef CFG_DISPLAY_LCD_I2C_16X2
+
 #include "config.h"
 
 #include <Arduino.h>
@@ -9,11 +11,6 @@
 #include <LiquidCrystal_I2C.h>
 #include "display.h"
 
-// Queues
-xQueueHandle displayQueue = NULL;
-
-// display task
-static TaskHandle_t displayTaskHandle = NULL;
 
 // LCD Display
 static LiquidCrystal_I2C lcd(0x27, 16, 2);  // TODO : address into config.h
@@ -47,7 +44,7 @@ void lcdHelper(void)
 // DISPLAY TASK
 // ============================================================================
 
-static void displayTask(void *arg)
+void displayTask(void *arg)
 {
   static displayQueueItem_t qMesg;
   static char buf[16];
@@ -198,17 +195,6 @@ static void displayTask(void *arg)
   }
 };
 
-void initDisplay(void)
-{
-  printf("[DISPLAY] init\n");
+#endif 
 
-  displayQueue = xQueueCreate(5, sizeof(displayQueueItem_t));
-  if (displayQueue == 0)
-  {
-    printf("[DISPLAY] Cannot create displayQueue. This is FATAL");
-  }
-
-  // create task
-  xTaskCreate(displayTask, "displayTask", 4096, NULL, 10, &displayTaskHandle);
-}
 // end of file

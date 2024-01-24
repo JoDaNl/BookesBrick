@@ -1,0 +1,14 @@
+{
+  "codename": "weight200Font",
+  "ttf_path": "\\assets\\digital-7 (mono italic).ttf",
+  "bin_path": "\\assets\\ui_font_weight200Font.bin",
+  "c_path": "\\assets\\ui_font_weight200Font.c",
+  "cfg_path": "\\assets\\ui_font_weight200Font.fcfg",
+  "size": 200,
+  "bpp": 8,
+  "letters": 0,
+  "ranges": [],
+  "symbols": "+-.0123456789HILO",
+  "customparams": "--no-compress --no-prefilter",
+  "uploaded": false
+}

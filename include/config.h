@@ -16,10 +16,6 @@
 
 //=============================================
 
-#define CFG_LCD_16x2_I2C        true
-
-//=============================================
-
 #define CFG_LED_PIN             LED_BUILTIN
 
 //=============================================
@@ -28,7 +24,7 @@
 #define CFG_RELAY0_PIN          GPIO_NUM_16
 #define CFG_RELAY0_ON_LEVEL     1
 #define CFG_RELAY0_OUTPUT_TYPE  OUTPUT      // or OUTPUT_OPENDRAIN
-#define CFG_RELAY0_ON_DELAY     200         // compressor-delay
+#define CFG_RELAY0_ON_DELAY     200         // compressor-delay in seconds
 #define CFG_RELAY0_OFF_DELAY    0
 #define CFG_RELAY0_LABEL        "Cool"
 
@@ -41,17 +37,19 @@
 
 //=============================================
 
-#define CFG_COMM_USE_FIXEDCREDS     false
-#define CFG_COMM_CREDS_SSID         "bookesbeer"
-#define CFM_COMM_CREDS_PASSWD       "password"
+#define CFG_COMM_USE_FIXEDCREDS         false
+#define CFG_COMM_CREDS_SSID             "bookesbeer"
+#define CFM_COMM_CREDS_PASSWD           "password"
 
-#define CFG_COMM_SSID_PORTAL        "BOOKESBRICK"
-#define CFG_COMM_ONLINE_TIMEOUT     120
+#define CFG_COMM_SSID_PORTAL            "BOOKESBRICK"
+#define CFG_COMM_ONLINE_TIMEOUT         120
 
-#define CFG_COMM_BBAPI_URL_BASE     "https://bricks.bierbot.com/api/iot/v1"
-// #define CFG_COMM_DEVICE_TYPE        "bookesbrick" 
-#define CFG_COMM_DEVICE_TYPE        "bookes" 
-// #define CFG_COMM_DEVICE_BRAND       "bookesbeer" 
+#define CFG_COMM_BBURL_API_BASE         "https://bricks.bierbot.com/api"
+#define CFG_COMM_BBURL_API_IOT          "/iot/v1"
+#define CFG_COMM_BBURL_PRO_API_DEVICE   "/device"
+#define CFG_COMM_BBURL_PRO_API_DEVICES  "/devices"
+
+#define CFG_COMM_DEVICE_TYPE        "bookes"  // do not change, impacst API result message
 #define CFG_COMM_DEVICE_BRAND       "bierbot" 
 #define CFG_COMM_DEVICE_VERSION     "0.2" 
 

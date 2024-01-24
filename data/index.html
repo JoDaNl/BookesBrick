@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>ESP32 WEB SERVER</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css"
+    integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+  <link rel="stylesheet" type="text/css" href="style.css">
+</head>
+
+<body>
+  <h2>ESP32 WEB SERVER</h2>
+  <div class="content">
+    <div class="card-grid">
+      <div class="card">
+        <p><i class="fas fa-lightbulb fa-2x" style="color:#c81919;"></i>     <strong>GPIO2</strong></p>
+        <p>GPIO state: <strong> %GPIO_STATE%</strong></p>
+        <p>
+          <a href="/led2on"><button class="button">ON</button></a>
+          <a href="/led2off"><button class="button button2">OFF</button></a>
+        </p>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>

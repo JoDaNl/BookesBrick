@@ -36,13 +36,9 @@ typedef struct displayQueueItem
   displayQueueData_t data;
 } displayQueueItem_t;
 
-
-
 extern xQueueHandle displayQueue;
-extern xQueueHandle displayQueue2;
-
+extern void displayTask(void *arg);
+extern int displayQueueSend(const void * const pvItemToQueue, TickType_t xTicksToWait);
 extern void initDisplay(void);
-extern void initDisplay2(void);
-
 
 #endif

@@ -2,18 +2,15 @@
 // lcd_128x64.cpp
 //
 
+
+#ifdef CFG_DISPLAY_LCD_12864
+
 #include "config.h"
 #include <Arduino.h>
 #include <Wire.h>
 #include <U8g2lib.h>
 #include <SPI.h>
 #include "display.h"
-
-// Queues
-xQueueHandle displayQueue2 = NULL;
-
-// display task
-static TaskHandle_t displayTaskHandle = NULL;
 
 // 128 x 64  LCD DISPLAY
 U8G2_ST7920_128X64_F_SW_SPI u8g2(U8G2_R0, /* clock=*/ 18, /* data=*/ 23, /* CS=*/ 5, /* reset=*/ 22); // ESP32
@@ -198,7 +195,7 @@ static void displayRender(void)
 // DISPLAY TASK
 // ============================================================================
 
-static void displayTask(void *arg)
+void displayTask(void *arg)
 {
   static displayQueueItem_t qMesg;
   static uint16_t doRenderCount;
@@ -217,7 +214,7 @@ static void displayTask(void *arg)
 
   while (true)
   {
-   if (xQueueReceive(displayQueue2, &qMesg, DELAY / portTICK_RATE_MS) == pdTRUE)
+   if (xQueueReceive(displayQueue, &qMesg, DELAY / portTICK_RATE_MS) == pdTRUE)
     {
       // printf("[DISPLAY] received qMesg.type=%d\n", qMesg.type);
 
@@ -271,18 +268,6 @@ static void displayTask(void *arg)
   }
 }
 
+#endif
 
-void initDisplay2(void)
-{
-  printf("[DISPLAY] init\n");
-
-  displayQueue2 = xQueueCreate(5, sizeof(displayQueueItem_t));
-  if (displayQueue2 == 0)
-  {
-    printf("[DISPLAY] Cannot create displayQueue. This is FATAL");
-  }
-
-  // create task
-  xTaskCreate(displayTask, "displayTask", 4096, NULL, 10, &displayTaskHandle);
-}
 // end of file
