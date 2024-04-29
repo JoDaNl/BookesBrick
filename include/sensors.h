@@ -5,8 +5,7 @@
 #include <Arduino.h>
 
 
-extern xQueueHandle sensorsQueue;
-
+extern int sensorsQueueSend(uint8_t *, TickType_t);
 extern void initSensors(void);
 
 #endif

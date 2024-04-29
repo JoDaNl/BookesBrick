@@ -4,9 +4,7 @@
 
 #include <Arduino.h>
 
-
-extern xQueueHandle monitorQueue;
-
+extern int monitorQueueSend(uint8_t *, TickType_t);
 extern void initMonitor(void);
 
 #endif

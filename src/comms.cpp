@@ -6,23 +6,326 @@
 #include <Arduino.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
+#include <NTPClient.h>
+// #include <WiFiClientSecure.h>
+#include <WiFiUdp.h>
 #include <preferences.h>
-#include "monitor.h"
-#include "comms.h"
-#include "i2c_lcd_16x2.h"
-#include "actuators.h"
 
-#define COMMS_WM_RESET false
-#define COMMS_WM_DEBUG true
+#include "controller.h"
+#include "comms.h"
+
+#define LOG_TAG "COMMS"
+#define DELAY_1S (1000)
 
 // GLOBALS
-xQueueHandle communicationQueue = NULL;
+static xQueueHandle communicationQueue = NULL;
 
-// module scope
+// LOCALS
+static TaskHandle_t communicationTaskHandle = NULL;
 
-// exported in wifimap.cpp <TDO> move to include or so
-extern String apiKey;
+// JSON
+static StaticJsonDocument<4096> jsonResponseDoc;
+static StaticJsonDocument<256> PROAPIFilterDoc;
+static JsonArray devices;
+const int16_t urlBufSize = 300;
+static char URL[urlBufSize];
 
+// NETWORK
+static HTTPClient http;
+static WiFiUDP ntpUDP;
+static NTPClient timeClient(ntpUDP);
+
+static char usedForDevicesValue[32];
+static bool usedForDevicesValid;
+
+// ACTUATORS
+static uint8_t actuators = 0;
+static bool actuatorsValid;
+
+
+// ============================================================================
+// CALL IOT API: SEND TEMPERATURE TO BACKEND AND GET NEW ACTUATOR VALUES
+// - return value is next temperature request (in sec)
+// ============================================================================
+static uint16_t callBricksAPI(uint16_t temperature)
+{
+  static uint8_t updatedActuator;
+  static uint64_t chipId;
+  static int getStatus;
+  static DeserializationError deserialisationError;
+  static uint32_t nextTempReqMs;
+  static uint16_t nextTempRequestSecValue;
+  static bool nextTempRequestSecValid;
+  static controllerQItem_t controllerMesg;
+
+  const char * key_epower_0_state   = "epower_0_state";
+  const char * key_epower_1_state   = "epower_1_state";
+  const char * key_next_request_ms  = "next_request_ms";
+  const char * key_used_for_devices = "used_for_devices";
+
+  // Default wait-time in case we get no valid response from the backend
+  nextTempRequestSecValue = 60; // secs
+  nextTempRequestSecValid = false;
+
+  // Default: assume we cannot receive actuator information
+  // Note that when a brick in not part of a device we will also receive no actuator information
+  actuatorsValid = false;
+
+  // Get MAC addres as unique ID for BB URL
+  chipId = ESP.getEfuseMac();
+
+  snprintf(URL, urlBufSize, "%s%s?apikey=%s&type=%s&brand=%s&version=%s&chipid=%6x%6x&s_number_temp_0=%2.1f&s_number_temp_id_0=%d&a_bool_epower_0=%d&a_bool_epower_1=%d",
+           CFG_COMM_BBURL_API_BASE,
+           CFG_COMM_BBURL_API_IOT,
+           config.apiKey.c_str(),
+           CFG_COMM_DEVICE_TYPE,
+           CFG_COMM_DEVICE_BRAND,
+           CFG_COMM_DEVICE_VERSION,
+           (uint32_t)(chipId >> 24), // split in 2 parts as we cannot print a 64-bit integer
+           (uint32_t)(chipId & 0x00FFFFFF),
+           temperature / 10.0,
+           0, // NOTE: sensor-id is harcoded to 0, update is case of extending to multiple sensors
+           (actuators & 1),
+           ((actuators >> 1) & 1));
+
+  ESP_LOGI(LOG_TAG,"---------------------------");
+  ESP_LOGI(LOG_TAG,"API-url=%s", URL);
+
+  // Use http 1.0 for streaming. See : https://arduinojson.org/v6/how-to/use-arduinojson-with-httpclient/
+  http.useHTTP10(true);
+  http.begin(URL);
+  getStatus = http.GET();
+
+  if (getStatus > 0)
+  {
+    // Parse JSON object
+    deserialisationError = deserializeJson(jsonResponseDoc, http.getStream());
+
+    if (deserialisationError)
+    {
+      printf("[COMMS] API deserializeJson() failed: %s\n", deserialisationError.f_str());
+    }
+    else
+    {
+      // Extract values from server response
+
+      // printf("[COMMS] Response      : %ld\n", responseCount++);
+      // printf("[COMMS] error         : %d - %s\n", jsonResponseDoc["error"].as<int>(), jsonResponseDoc["error_text"].as<const char *>());
+      // printf("[COMMS] warning       : %d - %s\n", jsonResponseDoc["warning"].as<int>(), jsonResponseDoc["warning_text"].as<const char *>());
+      // printf("[COMMS] nextTempReqMs : %ld\n", jsonResponseDoc["next_request_ms"].as<long>());
+
+      actuators = 0; // default, only set actuators when correct message has been received
+
+      // if (jsonResponseDoc["error"])
+      // {
+      //   // check error string
+      //   bbError = jsonResponseDoc["error_text"].as<String>();
+      // }
+
+      // if (jsonResponseDoc["warning"])
+      // {
+      //   // check warning string
+      //   bbWarning = jsonResponseDoc["warning_text"].as<String>();
+      // }
+
+      if (jsonResponseDoc.containsKey(key_epower_0_state) && jsonResponseDoc.containsKey(key_epower_1_state))
+      {
+        actuatorsValid = true;
+
+        updatedActuator = jsonResponseDoc[key_epower_0_state].as<uint8_t>();
+        actuators = actuators | (updatedActuator & 1);
+        // printf("[COMMS] set relay 0 to  : %d\n", updatedActuator);
+
+        updatedActuator = jsonResponseDoc[key_epower_1_state].as<uint8_t>();
+        actuators = actuators | (updatedActuator & 1) << 1;
+        // printf("[COMMS] set relay 1 to  : %d\n", updatedActuator);
+
+          actuatorsValid = true;
+      }
+      else
+      {
+        ESP_LOGE(LOG_TAG,"epower_N_states not received");
+      }
+
+      if (jsonResponseDoc.containsKey(key_next_request_ms))
+      {
+        nextTempReqMs = jsonResponseDoc[key_next_request_ms].as<long>();
+        nextTempRequestSecValue = nextTempReqMs / 1000;
+        nextTempRequestSecValid = true;
+      }
+
+      if (jsonResponseDoc.containsKey(key_used_for_devices))
+      {
+        // 'used_for_devices' is an array, but we assume here that the bookesbrick is
+        //  only used within 1 device. Hence we only use the first element of the array
+        devices = jsonResponseDoc[key_used_for_devices].as<JsonArray>();
+
+        if (devices.size() > 0)
+        {
+          strncpy(usedForDevicesValue, devices[0], 32);
+          ESP_LOGI(LOG_TAG,"usedForDevices=%s\n", usedForDevicesValue);
+          usedForDevicesValid = true;
+        }
+      }
+      else
+      {
+        usedForDevicesValid = false;
+        ESP_LOGI(LOG_TAG,"used_for_devices not received");
+      }
+
+    } // extract values
+  }
+  else
+  {
+    printf("[COMMS] no valid response from back-end. getResponse=%d (%s)\n", getStatus, http.errorToString(getStatus).c_str());
+  }
+
+  http.end();
+
+  ESP_LOGI(LOG_TAG,"---------------------------");
+
+  return nextTempRequestSecValue;
+}
+
+static void initPROAPIFilterDocs(void)
+{
+  // Use a JSON filter document, see : https://arduinojson.org/v6/how-to/deserialize-a-very-large-document/
+
+  PROAPIFilterDoc["name"] = true;
+  PROAPIFilterDoc["type"] = true;
+  PROAPIFilterDoc["targetState"]["tempCelsius"] = true;
+  PROAPIFilterDoc["active"] = true;
+  // PROAPIFilterDoc["targetState"]["tempFahrenheid"] = true; // Not tested
+}
+
+// ============================================================================
+// QUERY PRO-API TO GET THE TEMPERATURE SET_POINT OF A ACTIVE BREW
+// - return value is next API-request (in sec)
+// ============================================================================
+
+static uint16_t callBierBotPROAPI(void)
+{
+  static int getResponse;
+  static DeserializationError deserialisationError;
+  static uint16_t setPointValue;
+  static bool setPointValid;
+  static String deviceName;
+  static String *deviceNameQPtr;
+  static controllerQItem_t controllerMesg;
+
+  setPointValid = false;
+  deviceNameQPtr = NULL; // We do not have an explicit valid flag for this pointer, as we can set it to NULL
+
+  if (usedForDevicesValid)
+  {
+    snprintf(URL, urlBufSize, "%s%s?apikey=%s&proapikey=%s&deviceid=%s", CFG_COMM_BBURL_API_BASE, CFG_COMM_BBURL_PRO_API_DEVICE, config.apiKey.c_str(), config.proApiKey.c_str(), usedForDevicesValue);
+    ESP_LOGI(LOG_TAG,"PRO API-URL=%s\n", URL);
+
+    // Use http 1.0 for streaming. See : https://arduinojson.org/v6/how-to/use-arduinojson-with-httpclient/
+    http.useHTTP10(true);
+    http.begin(URL);
+    getResponse = http.GET();
+
+    if (getResponse > 0)
+    {
+      deserialisationError = deserializeJson(jsonResponseDoc, http.getStream(), DeserializationOption::Filter(PROAPIFilterDoc));
+
+      if (deserialisationError)
+      {
+        ESP_LOGE(LOG_TAG,"PRO API deserializeJson() failed: %s", deserialisationError.f_str());
+      }
+      else
+      {
+        // Extract values
+        setPointValue = jsonResponseDoc["targetState"]["tempCelsius"].as<float>() * 10.0;
+        setPointValid = jsonResponseDoc["active"].as<bool>();
+        deviceName    = jsonResponseDoc["name"].as<String>();
+
+        if (jsonResponseDoc.containsKey("name"))
+        {
+          // first time to receive name OR name has changed
+          if ((deviceNameQPtr == NULL) || (deviceNameQPtr->equals(deviceName)))
+          {
+            deviceNameQPtr = new String(deviceName);
+
+            controllerMesg.type = e_mtype_backend;
+            controllerMesg.mesg.backendMesg.mesgId = e_msg_backend_device_name;
+            controllerMesg.mesg.backendMesg.stringPtr = deviceNameQPtr;
+            controllerMesg.mesg.backendMesg.valid = true;
+            controllerQueueSend(&controllerMesg, 0);
+          }
+        }
+      }
+    }
+    else
+    {
+      ESP_LOGE(LOG_TAG,"PRO API Received NO VALID RESPONSE: %d", getResponse);
+    }
+
+    http.end();
+
+    controllerMesg.type = e_mtype_backend;
+    controllerMesg.mesg.backendMesg.mesgId = e_msg_backend_temp_setpoint;
+    controllerMesg.mesg.backendMesg.data = setPointValue;
+    controllerMesg.mesg.backendMesg.valid = setPointValid;
+    controllerQueueSend(&controllerMesg, 0);
+  }
+  else
+  {
+    ESP_LOGI(LOG_TAG,"Skipping PRO API call as we have no valid device-id yet");
+  }
+
+  return (CFG_COMM_PROAPI_INTERVAL);
+}
+
+// ============================================================================
+// GET TIME FROM NTP SERVER
+// - return value is next NTP-request (in sec)
+// ============================================================================
+
+static uint16_t getNTPTime(void)
+{
+  static uint8_t hours;
+  static uint8_t minutes;
+  static controllerQItem_t timeMesg;
+  static uint16_t nextRequest;
+  static uint16_t time;
+
+  // NTP time client
+  timeClient.begin();
+
+  // Update time
+  timeClient.update();
+
+  timeMesg.type = e_mtype_time;
+  timeMesg.mesg.timeMesg.mesgId = e_msg_time_data;
+
+  if (timeClient.isTimeSet())
+  {
+    hours = timeClient.getHours();
+    minutes = timeClient.getMinutes();
+
+    ESP_LOGI(LOG_TAG,"NTP Request, TIME = %2d:%02d", hours, minutes);
+
+    time = hours << 8 | minutes;
+
+    timeMesg.valid = true;
+    timeMesg.mesg.timeMesg.data = time;
+  }
+  else
+  {
+    ESP_LOGE(LOG_TAG,"NTP Request, TIME NOT SET!");
+
+    timeMesg.valid = false;
+    timeMesg.mesg.timeMesg.data = 0;
+  }
+
+  timeClient.end();
+
+  controllerQueueSend(&timeMesg, 0);
+
+  return (CFG_COMM_NTPREQUEST_INTERVAL);
+}
 
 // ============================================================================
 // COMMUNICATION TASK
@@ -31,360 +334,114 @@ extern String apiKey;
 static void communicationTask(void *arg)
 {
   static bool status;
-  static displayQueueItem_t displayQMesg;
-  static actuatorQueueItem_t actuatorQMesg;
-  static uint32_t nextTempReqMs;
-  static uint16_t nextTempRequestSec;
-  static uint32_t nextLCDReqMs;
-  static uint16_t nextLCDRequestSec;
-  static uint8_t qMesg;
+  static uint16_t nextAPIRequestSecMax;
+  static uint16_t nextAPIRequestSec;
+  static uint16_t nextPROAPIRequestSec;
+  static uint16_t nextNTPRequestSec;
+  static bool temperatureValid = false;
+  static int16_t temperature; // TODO : support for multiple temperatures
 
-  // TEMPERATURE
-  static bool temperature_valid = false;
-  static uint16_t temperature; // TODO : support for multiple temperatures
+  // CONTROLLER MESSAGE
+  static controllerQItem controllerMesg;
 
-  // NETWORK
-  static HTTPClient http;
-  static int httpGETStatus;
+  // JSON SETUP FILTER DOC
+  initPROAPIFilterDocs();
 
-  // use cipID as unique ID required by BB api
-  static uint64_t chipId;
-
-  // BIERBOT
-  static String bbUrlPart;
-  static String bbUrlTemp;
-  static String bbUrlLCD;
-  static const String cfgCommBBApiUrlbase = CFG_COMM_BBAPI_URL_BASE;
-
-  // ACTUATORS
-  static uint8_t actuator0 = 0;
-  static uint8_t actuator1 = 0;
-  static uint8_t prevActuator0 = 0;
-  static uint8_t prevActuator1 = 0;
-
-  // JSON
-  static StaticJsonDocument<2048> jsonResponseDoc; // TODO : use dynamic allocation !
-
-  // Message for display task
-  displayQMesg.type = e_wifiInfo;
-  displayQMesg.index = 0;
-  displayQMesg.duration = 10; // seconds
-
-// Get MAC addres as unique ID for BB URL
-  chipId = ESP.getEfuseMac();
-
-  bbUrlPart = cfgCommBBApiUrlbase +
-              "?apikey=" + apiKey +
-              "&type=" + CFG_COMM_DEVICE_TYPE +
-              "&brand=" + CFG_COMM_DEVICE_BRAND +
-              "&version=" + CFG_COMM_DEVICE_VERSION +
-              "&chipid=" + chipId;
-
-  bbUrlLCD = cfgCommBBApiUrlbase +
-             "?apikey=" + apiKey +
-             "&type=display" +
-             "&brand=oss" +
-             "&version=0.1" +
-             "&chipid=" + chipId +
-             "&d_object_information_0=4x20";
+  nextAPIRequestSecMax = 5;
+  nextAPIRequestSec = nextAPIRequestSecMax;
+  nextPROAPIRequestSec = 10;
+  nextNTPRequestSec = 1; // init to 0 for first call
 
   // ===========================================================
   // TASK LOOP
   // ===========================================================
-
-  // TODO : simplify code, re strucuture & put TEMp & LCD stuff into helper functions
-
-  // initial start-up delay...it's fancy to be late :-)
-  nextTempRequestSec = 15;
-  nextLCDRequestSec = 20;
-
-  printf("[COMMS] Entering task loop...\n");
 
   // TASK LOOP
   while (true)
   {
-    // Receive temperature from queue
+    // Print memmory usage
+    // printf("[COMMS] Free memory: %d bytes, watermark: %d bytes\n", esp_get_free_heap_size(), uxTaskGetStackHighWaterMark(NULL));
+
+    // Receive message from queue
     if (xQueueReceive(communicationQueue, &temperature, 0) == pdTRUE)
     {
-      temperature_valid = true;
-      printf("[COMMS] temperature received : %2.1f\n", temperature / 10.0);
+      if (nextAPIRequestSec > 0)
+      {
+        nextAPIRequestSec--;
+      }
+      else
+      {
+        nextAPIRequestSecMax = callBricksAPI(temperature);
+        // just limit max to 255 (cannot send larger nr's to display)
+        if (nextAPIRequestSecMax > 255)
+        {
+          nextAPIRequestSecMax = 255;
+        }
+        nextAPIRequestSec = nextAPIRequestSecMax;
+
+
+        // Send actuator info to controller
+        controllerMesg.type                     = e_mtype_backend;
+        controllerMesg.mesg.backendMesg.mesgId  = e_msg_backend_actuators;
+        controllerMesg.mesg.backendMesg.data    = actuators;
+        controllerMesg.mesg.backendMesg.valid   = actuatorsValid;
+        controllerQueueSend(&controllerMesg, 0); 
+      }
     }
 
-    // Check WiFi status and if preferences are loaded from FLASH/EEPROM
-    if (WiFi.status() == WL_CONNECTED)
+
+
+    //  only call PRO API if 'udedForDevices' is valid
+    if (usedForDevicesValid)
     {
-      // Send temperature to BB backend...
-      if (nextTempRequestSec == 0)
-      {
-        printf("[COMMS] contacting BB to send temperature\n");
-
-        // Default wait-time in case we get no valid response from the backend
-        nextTempRequestSec = 60; // secs
-
-        if (temperature_valid)
-        {
-          // TODO : for testing purposes only...must be configurable/parameterised
-          int sensor_id = 0;
-
-          bbUrlTemp = bbUrlPart +
-                      "&s_number_temp_0=" + temperature / 10.0 +
-                      "&s_number_temp_id_0=" + sensor_id +
-                      "&a_bool_epower_0=" + actuator0 +
-                      "&a_bool_epower_1=" + actuator1;
-
-          printf("[COMMS] url=%s\n", bbUrlTemp.c_str());
-
-          http.begin(bbUrlTemp);
-          httpGETStatus = http.GET();
-
-          if (httpGETStatus > 0)
-          {
-            String response;
-
-            response = http.getString();
-
-            // example response:
-            // {
-            //  "error":0,
-            //  "error_text":"",
-            //  "warning":0,
-            //  "warning_text":"",
-            //  "next_request_ms":15000,
-            //  "epower_0_state":0,
-            //  "epower_1_state":0
-            // }
-
-            // printf("[COMMS] response TEMP=%s\n", response.c_str());
-
-            // Parse JSON object
-            DeserializationError error = deserializeJson(jsonResponseDoc, response.c_str());
-
-            if (error)
-            {
-              printf("[COMMS] deserializeJson() failed: %s\n", error.f_str());
-              // TODO : send errors to monitor-task
-            }
-            else
-            {
-              // Extract values
-              printf("[COMMS] Response:\n");
-              printf("[COMMS] error           : %d\n", jsonResponseDoc["error"].as<int>());
-              printf("[COMMS] error_text      : %s\n", jsonResponseDoc["error_text"].as<const char *>());
-              printf("[COMMS] warning         : %d\n", jsonResponseDoc["warning"].as<int>());
-              printf("[COMMS] warning_text    : %s\n", jsonResponseDoc["warning_text"].as<const char *>());
-              printf("[COMMS] nextTempReqMs   : %ld\n", jsonResponseDoc["next_request_ms"].as<long>());
-
-              String bbError;
-              String bbWarning;
-
-              if (jsonResponseDoc["error"])
-              {
-                // check error string
-                bbError = jsonResponseDoc["error_text"].as<String>();
-                // TODO : send errors to monitor-task
-              }
-              else
-              {
-                // No error...so we trigger the monitor task
-                qMesg = 0;
-                xQueueSend(monitorQueue, &qMesg, 0);
-              }
-
-              if (jsonResponseDoc["warning"])
-              {
-                // check warning string
-                bbWarning = jsonResponseDoc["warning_text"].as<String>();
-                // TODO : send errors to monitor-task
-              }
-
-              if (jsonResponseDoc.containsKey("next_request_ms"))
-              {
-                nextTempReqMs = jsonResponseDoc["next_request_ms"].as<long>();
-                nextTempRequestSec = nextTempReqMs / 1000;
-              }
-
-              if (jsonResponseDoc.containsKey("epower_0_state"))
-              {
-                actuator0 = jsonResponseDoc["epower_0_state"].as<uint8_t>();
-                printf("[COMMS] set relay 0 to: %d\n", actuator0);
-              }
-              else
-              {
-                printf("[COMMS] epower_0_state not received\n");
-              }
-
-              if (jsonResponseDoc.containsKey("epower_1_state"))
-              {
-                actuator1 = jsonResponseDoc["epower_1_state"].as<uint8_t>();
-                printf("[COMMS] set relay 1 to: %d\n", actuator1);
-              }
-              else
-              {
-                printf("[COMMS] epower_1_state not received\n");
-              }
-
-              // TODO : add error checking before sending status to actuators;
-
-              // Send actuator changes to actuator task
-              if (actuator0 != prevActuator0)
-              {
-                actuatorQMesg.number = 0;
-                actuatorQMesg.onOff = actuator0;
-                xQueueSend(actuatorsQueue, &actuatorQMesg, 0);
-                prevActuator0 = actuator0;
-              }
-
-              if (actuator1 != prevActuator1)
-              {
-                actuatorQMesg.number = 1;
-                actuatorQMesg.onOff = actuator1;
-                xQueueSend(actuatorsQueue, &actuatorQMesg, 0);
-                prevActuator1 = actuator1;
-              }
-            }
-          }
-          else
-          {
-            printf("[COMMS] Error on HTTP GET request\n");
-            // TODO : send to display
-          }
-
-          http.end(); // Free the resources
-        }
-      }
-
-      if (nextTempRequestSec > 0)
+      if (nextPROAPIRequestSec > 0)
       {
         // count down to 0
-        nextTempRequestSec--;
+        nextPROAPIRequestSec--;
       }
-
-#define LCD_TEST_CODE
-#ifdef LCD_TEST_CODE
-
-      // THIS IS ALPHA CODE....PAINT STILL WET !!!
-
-      if (nextLCDRequestSec == 0)
+      else
       {
-        nextLCDRequestSec = 60;
-
-        http.begin(bbUrlLCD);
-        httpGETStatus = http.GET();
-
-        if (httpGETStatus > 0)
-        {
-          String response;
-
-          response = http.getString();
-
-          // example response:
-          // {
-          //    "result" : "success",
-          //    "error" : 0,
-          //    "error_text" : "",
-          //    "warning" : 0,
-          //    "warning_text" : "",
-          //    "settings" :
-          //    {
-          //        "temperatureUnit" : "celsius",
-          //        "displayBrewEveryS" : 5,
-          //        "showLocalIP" : false
-          //    },
-          //    "brews" :
-          //    [
-          //       {
-          //           "currentTemperatureC" :
-          //           {
-          //               "na" : -273,
-          //               "primary" : 16.375,
-          //               "secondary" : -273,
-          //               "hlt" : -273,
-          //               "mlt" : -273
-          //           },
-          //           "id" : "iWY3XYUVGtR81oudBy7p",
-          //           "name" : "Fermentation only",
-          //           "targetTemperatureC" : 17,
-          //           "nextEvents" :
-          //           [
-          //           ]
-          //        }
-          //    ],
-          //    "next_request_ms" : 45000
-          // }
-
-          // Use a JSON filter document, see : https://arduinojson.org/v6/how-to/deserialize-a-very-large-document/
-
-          // {
-          //     "result" : true,
-          //     "brews" :
-          //     [
-          //         { "targetTemperatureC" : true }
-          //     ],
-          //  "next_request_ms" : true
-          // }
-
-          StaticJsonDocument<128> filterDoc;
-          filterDoc["result"] = true;
-          filterDoc["brews"][0]["targetTemperatureC"] = true;
-          filterDoc["next_request_ms"] = true;
-
-          printf("[COMMS] Received response from LCD API\n");
-          printf("[COMMS] response LCD=%s\n", response.c_str());
-
-          // Parse JSON object
-          DeserializationError error = deserializeJson(jsonResponseDoc, response.c_str(), DeserializationOption::Filter(filterDoc));
-
-          if (error)
-          {
-            printf("[COMMS] deserializeJson() failed: %s\n", error.f_str());
-          }
-          else
-          {
-            printf("[COMMS]   result=%s\n", jsonResponseDoc["result"].as<const char *>());
-            printf("[COMMS]   targetTemp=%d\n", jsonResponseDoc["brews"][0]["targetTemperatureC"].as<int>());
-            printf("[COMMS]   next_request_ms=%ld\n", jsonResponseDoc["next_request_ms"].as<long>());
-
-            if (jsonResponseDoc["result"] == "success")
-            {
-              uint16_t targetTemp;
-
-              //            if (jsonResponseDoc.containsKey("targetTemperatureC"))
-              {
-                targetTemp = jsonResponseDoc["brews"][0]["targetTemperatureC"].as<uint16_t>();
-
-                // send target temperature to
-                displayQMesg.type = e_setpoint;
-                displayQMesg.data.temperature = targetTemp * 10;
-                displayQMesg.duration = 0;
-                xQueueSend(displayQueue, &displayQMesg, 0);
-              }
-
-              if (jsonResponseDoc.containsKey("next_request_ms"))
-              {
-                nextLCDReqMs = jsonResponseDoc["next_request_ms"].as<long>();
-                nextLCDRequestSec = nextLCDReqMs / 1000;
-              }
-            }
-          }
-        }
+        // Call to back-end
+        nextPROAPIRequestSec = callBierBotPROAPI();
+        // nextPROAPIRequestSec = 60;
       }
     }
 
-    if (nextLCDRequestSec > 0)
+    if (nextNTPRequestSec > 0)
     {
       // count down to 0
-      nextLCDRequestSec--;
+      nextNTPRequestSec--;
+    }
+    else
+    {
+      // Call to back-end
+      nextNTPRequestSec = getNTPTime();
     }
 
-#endif
-
-
-//    printf("[COMMS]     nextTempRequestSec=%3d   nextLCDRequestSec=%3d\n", nextTempRequestSec, nextLCDRequestSec);
+    // TODO : improve heartbeat...i.e. if backend silences the controller should know
+    controllerMesg.type = e_mtype_backend;
+    controllerMesg.mesg.backendMesg.mesgId = e_msg_backend_heartbeat;
+    controllerMesg.mesg.backendMesg.data = (nextAPIRequestSecMax << 8) | nextAPIRequestSec;
+    controllerMesg.mesg.backendMesg.valid = true;
+    controllerQueueSend(&controllerMesg, 0);
 
     // loop delay
-    vTaskDelay(1000 / portTICK_RATE_MS);
+    vTaskDelay(DELAY_1S / portTICK_RATE_MS);
   }
 };
+
+int communicationQueueSend(int16_t *queueItem, TickType_t xTicksToWait)
+{
+  int r;
+  r = pdTRUE;
+
+  if (communicationQueue != NULL)
+  {
+    r = xQueueSend(communicationQueue, queueItem, xTicksToWait);
+  }
+
+  return r;
+}
 
 // ============================================================================
 // INIT COMMUNICATION
@@ -392,21 +449,16 @@ static void communicationTask(void *arg)
 
 void initCommmunication(void)
 {
-  static TaskHandle_t communicationTaskHandle = NULL;
+  ESP_LOGI(LOG_TAG,"initCommunication");
 
-  printf("[COMMS] init\n");
-
-  // queue is only 1 deep...
-  // sender is probably to fast and cannot transmit all measured temperatures
-  // but we don't care....just take 1 temperature from queue...
-  communicationQueue = xQueueCreate(1, sizeof(uint16_t));
+  communicationQueue = xQueueCreate(4, sizeof(int16_t));
   if (communicationQueue == 0)
   {
-    printf("[COMMS] Cannot create communicationQueue. This is FATAL\n");
+    ESP_LOGE(LOG_TAG,"Cannot create communicationQueue. This is FATAL\n");
   }
 
   // create task
-  xTaskCreatePinnedToCore(communicationTask, "communicationTask", 4096, NULL, 10, &communicationTaskHandle, 0);
+  xTaskCreate(communicationTask, "communicationTask", 10 * 1024, NULL, 10, &communicationTaskHandle);
 }
 
 // end of file
