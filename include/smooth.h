@@ -18,7 +18,7 @@ private:
   int _value;
   int _outputValid;
 
-  // compare function required for qsort function
+  // compare function required for qsort
   static int compare_int(const void *a, const void *b)
   {
     int a_val = *((long *)a);
@@ -67,7 +67,6 @@ public:
       // Consume new samples until _samples buffer is full. Output remains invalid
       _samples[_sampleCount] = value;
       _sampleCount++;
-      // printf("_sample_count = %d\n", _sampleCount);
 
       if (_sampleCount == SAMPLE_WINDOW)
       {
@@ -124,9 +123,6 @@ public:
         _value = 0;
       }
 
-      // printf("median        = %d\n", median);
-      // printf("valid_samples = %d\n", numValidSamples);
-      // printf("_value        = %d\n", _value);
     }
     break;
     }

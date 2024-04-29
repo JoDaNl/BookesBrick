@@ -2,25 +2,31 @@
 //  sensors.cpp
 //
 
-#include "config.h"
-
+// public domain libs
 #include <Arduino.h>
-#include "sensors.h"
-#include "comms.h"
-#include "i2c_lcd_16x2.h"
-
 #include <OneWire.h>
 #include <DallasTemperature.h>
+
+// common includes
+#include "config.h"
 #include "smooth.h"
 
-// Temperature sensor
-#define SMOOTH_SAMPLES  7 // must be odd number
+// task includes
+#include "sensors.h"
+#include "controller.h"
+#include "comms.h"
 
+
+// Temperature sensor
+#define CFG_SMOOTH_SAMPLES  (7) // must be odd number
+
+// Loop delay
+#define DELAY (2000)
 
 // Queues
-xQueueHandle sensorsQueue = NULL;
+static xQueueHandle sensorsQueue = NULL;
 
-// Actuators task
+// Sensors task-handle
 static TaskHandle_t sensorsTaskHandle = NULL;
 
 // ============================================================================
@@ -29,98 +35,121 @@ static TaskHandle_t sensorsTaskHandle = NULL;
 
 void sensorsTask(void *arg)
 {
-  static float temp_sens = 0.0;
-  static int temp_smooth = 0;
-  static int temp_sprev = 0;
-  static bool temp_error = false;
-  static int num_sensors;
-  static displayQueueItem_t qMesg;
+  static float tempSens = 0.0;
+  static int tempSmooth = 0;
+  static bool tempError = false;
+  static int numSensors = 0;
+  static bool tempValid = false;
+  static controllerQItem_t qControllerMesg;
 
   static OneWire oneWire(CFG_TEMP_PIN);
   static DallasTemperature sensors(&oneWire);
-  static Smooth<SMOOTH_SAMPLES> smooth;
+  static Smooth<CFG_SMOOTH_SAMPLES> smooth;
 
   smooth.setMaxDeviation(10); // 1 degree
 
-  qMesg.type = e_temperature;
-  qMesg.index = 0;
-  qMesg.duration = 0; // 0=display forever
 
-
+#if (CFG_TEMP_SENSOR_SIMULATION == false)
   // set-up DS18B20 temperature sensor(s)
   sensors.begin();
   sensors.setResolution(12);
 
   // TODO : support for multiple sensors
-  num_sensors = sensors.getDS18Count();
-  printf("[SENSORS] Number of DS18B20 sensors found=%d\n", num_sensors);
+  numSensors = sensors.getDS18Count();
+  printf("[SENSORS] Number of DS18B20 sensors found=%d\n", numSensors);
+#else
+  numSensors = 1;
+#endif
 
+  // inform controller about number of sensors discovered
+  qControllerMesg.type = e_mtype_sensor;
+  qControllerMesg.mesg.sensorMesg.mesgId = e_msg_sensor_numSensors;
+  qControllerMesg.mesg.sensorMesg.data = numSensors;
+  qControllerMesg.valid = true;
+  controllerQueueSend(&qControllerMesg , 0);
 
   // TODO : support for NTC sensors
 
   while (true)
   {
-    // printf("[SENSORS] PRINTING..\n");
+    // printf("[SENSORS] LOOP..\n");
 
-    if (num_sensors > 0)
+#if (CFG_TEMP_SENSOR_SIMULATION == false)
+    if (numSensors > 0)
     {
+      tempValid = false;
       sensors.requestTemperatures();
 
       // TODO : get temperatures for all discovered devices
-      // TODO : system should work (actuators) even if NO sensor is present ! There's a dependency right now
 
 #ifdef CFG_TEMP_IN_CELCIUS
-      temp_sens = sensors.getTempCByIndex(0);
-      temp_error = (temp_sens == DEVICE_DISCONNECTED_C);
+      tempSens = sensors.getTempCByIndex(0);
+      tempError = (tempSens == DEVICE_DISCONNECTED_C);
 #elif CFG_TEMP_IN_FARENHEID
       temperature = sensors.getTempFByIndex(0);
-      temp_error = (temp_sens == DEVICE_DISCONNECTED_F);
+      tempError = (tempSens == DEVICE_DISCONNECTED_F);
 #else
       printf("[SENSORS] NO TEMPERATURE SENSOR DEFINED\n");
 #endif
 
-      if (temp_error)
+#else // CFG_TEMP_SENSOR_SIMULATION == true
+     {
+      tempSens = 5.0 + rand()*30.0/RAND_MAX;
+      tempError = false;
+      tempValid = false;
+#endif
+      if (tempError)
       {
         printf("[SENSORS] TEMPERATURE SENSOR ERROR !!!\n");
         
+        // TODO : add optional power cycle 
+
         // reset 1-wire bus
         vTaskDelay(500 / portTICK_RATE_MS);
         oneWire.reset();
+        vTaskDelay(500 / portTICK_RATE_MS);
         vTaskDelay(500 / portTICK_RATE_MS);
         sensors.begin();
         vTaskDelay(500 / portTICK_RATE_MS);
       }
       else
       {
-
-        // printf("[SENSORS] Temperature sensor %d is: %f\n",0, sensors.getTempCByIndex(0) );
-
         // smooth measured temp * 100 (2 digits accuracy)
-        smooth.setValue(temp_sens * 10);
+        smooth.setValue(tempSens * 10);
 
         if (smooth.isValid())
         {
-          temp_smooth = smooth.getValue();
-
-          // send temperature to display-queue
-          // only send when temperature has changed.
-          if ((temp_smooth != temp_sprev) && displayQueue != NULL)
-          {
-            qMesg.data.temperature = temp_smooth;
-
-            // not checking result (must be pdPASS)...
-            xQueueSend(displayQueue, &qMesg, 0);
-            xQueueSend(communicationQueue, &temp_smooth, 0);
-
-            temp_sprev = temp_smooth;
-          }
+          tempSmooth = smooth.getValue();
+          tempValid = true;
         }
       }
     }
 
-    vTaskDelay(2000 / portTICK_RATE_MS);
+    // send temperature to controller-queue
+    qControllerMesg.type                    = e_mtype_sensor;
+    qControllerMesg.mesg.sensorMesg.mesgId  = e_msg_sensor_temperature;
+    qControllerMesg.mesg.sensorMesg.data    = tempSmooth;
+    qControllerMesg.valid                   = tempValid;
+    controllerQueueSend(&qControllerMesg , 0);
+
+    vTaskDelay(DELAY / portTICK_RATE_MS);
   }
 };
+
+// wrapper for sendQueue 
+int sensorsQueueSend(uint8_t * sensorsQMesg, TickType_t xTicksToWait)
+{
+  int r;
+  r = pdTRUE;
+
+  if (sensorsQueue != NULL)
+  {
+    r =  xQueueSend(sensorsQueue, sensorsQMesg, xTicksToWait);
+  }
+
+  return r;
+};
+
 
 void initSensors(void)
 {
@@ -134,7 +163,7 @@ void initSensors(void)
   }
 
   // create task
-  xTaskCreatePinnedToCore(sensorsTask, "sensorsTask", 4096, NULL, 10, &sensorsTaskHandle, 0);
+  xTaskCreate(sensorsTask, "sensorsTask", 2 * 1024, NULL, 10, &sensorsTaskHandle);
 }
 
 // end of file

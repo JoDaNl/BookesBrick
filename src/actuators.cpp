@@ -5,10 +5,64 @@
 #include "config.h"
 #include <Arduino.h>
 #include "actuators.h"
-#include "i2c_lcd_16x2.h"
+#include "controller.h"
+
+#define LOG_TAG "ACTUATORS"
 
 // GLOBALS
-xQueueHandle actuatorsQueue = NULL;
+static xQueueHandle actuatorsQueue = NULL;
+
+static void setActuator(uint8_t number, uint8_t onOff)
+{
+  static bool pinModeNotSet = true;
+  uint8_t pin;
+  uint8_t onLevel;
+  bool valid;
+
+  if (pinModeNotSet)
+  {
+    pinModeNotSet = false;
+    pinMode(CFG_RELAY0_PIN, CFG_RELAY0_OUTPUT_TYPE);
+    pinMode(CFG_RELAY1_PIN, CFG_RELAY1_OUTPUT_TYPE);
+  }
+
+  valid = false;
+
+  switch (number)
+  {
+    case 0:
+      pin     = CFG_RELAY0_PIN;
+      onLevel = CFG_RELAY0_ON_LEVEL;
+      valid   = true;
+      break;
+    case 1:
+      pin     = CFG_RELAY1_PIN;
+      onLevel = CFG_RELAY1_ON_LEVEL;
+      valid   = true;
+      break;  
+  }
+
+  if (onOff == 0)
+  {
+    // invert level
+    onLevel = !onLevel;
+  }
+
+  if (valid)
+  {
+    digitalWrite(pin, onLevel);
+    // printf("[ACTUATORS] digitalWrite(%d, %d)\n",pin, onLevel);    
+    ESP_LOGI(LOG_TAG,"digitalWrite(%d, %d)",pin, onLevel);
+  }
+}
+
+
+void powerUpActuators(void)
+{
+  setActuator(0, 0);
+  setActuator(1, 0);
+}
+
 
 // ============================================================================
 // ACTUATORS TASK
@@ -16,7 +70,8 @@ xQueueHandle actuatorsQueue = NULL;
 
 static void actuatorsTask(void *arg)
 {
-  static actuatorQueueItem_t qMesg;
+  static actuatorQueueItem_t actuatorMesg;
+  static controllerQItem_t controllerMsg;
 
   // TODO : use arrays...you know how to..!
   static uint8_t actuatorReqeuest0;
@@ -28,56 +83,35 @@ static void actuatorsTask(void *arg)
   static uint16_t offDelaySec0;
   static uint16_t offDelaySec1;
 
-  static displayQueueItem_t displayQMesg;
-
-  displayQMesg.type = e_actuator;
-
-  // TODO : make configurable
-  pinMode(CFG_RELAY0_PIN, OUTPUT);
-  pinMode(CFG_RELAY1_PIN, OUTPUT);
-
-  // Set all actuators off
-  digitalWrite(CFG_RELAY0_PIN, !CFG_RELAY0_ON_LEVEL);
-  digitalWrite(CFG_RELAY1_PIN, !CFG_RELAY1_ON_LEVEL);
-
-
   // INIT DELAYS
   // we also could start the task loop with all delays initially zero,
   // however presetting them ensures a initial delay after boot.
   // This prevent violation the delays in case of accidental boot-
   // loops during code development or possible power-outages
-  onDelaySec0 = CFG_RELAY0_ON_DELAY;
-  onDelaySec1 = CFG_RELAY1_ON_DELAY;
-  offDelaySec0 = CFG_RELAY0_OFF_DELAY;
-  offDelaySec1 = CFG_RELAY0_OFF_DELAY;
+  onDelaySec0   = CFG_RELAY0_ON_DELAY;
+  onDelaySec1   = CFG_RELAY1_ON_DELAY;
+  offDelaySec0  = CFG_RELAY0_OFF_DELAY;
+  offDelaySec1  = CFG_RELAY0_OFF_DELAY;
+
+  actuatorActual0 = 0;
+  actuatorActual1 = 0;
 
   // Task loop
   while (true)
   {
     // get message from queue
-    if (xQueueReceive(actuatorsQueue, &qMesg, 1000 / portTICK_RATE_MS) == pdTRUE)
+    if (xQueueReceive(actuatorsQueue, &actuatorMesg, 1000 / portTICK_RATE_MS) == pdTRUE)
     {
-      printf("[ACTUATORS] received qMesg.number=%d - qMesg.onOff=%d\n", qMesg.number, qMesg.onOff);
-
-      // qMesg.number is the actuator=number
-      // qMesg.onOff is the deribed/new state of the actuator
-      switch (qMesg.number)
-      {
-      case 0:
-        actuatorReqeuest0 = qMesg.onOff;
-        break;
-      case 1:
-        actuatorReqeuest1 = qMesg.onOff;
-        break;
-      default:
-        break;
-      }
+      // printf("[ACTUATORS] received qMesg.data=%d\n", actuatorMesg.data);
+      ESP_LOGI(LOG_TAG,"received qMesg.data=%d", actuatorMesg.data);
+      actuatorReqeuest0 = actuatorMesg.data & 1;
+      actuatorReqeuest1 = (actuatorMesg.data >> 1) & 1;
     }
 
     // ON-OFF DELAY 
     // Actuators may have a pre-defined (see config.h) on and/or off delay
     // when an actuator goes into off-state it immediately can be triggered to go into on-state 
-    // but then CFG_RELAY0_ON_DELAY time must must have been passed before the actuator is 
+    // but then CFG_RELAY0_ON_DELAY time must  have been passed before the actuator is 
     // actually switched on...the task will take care for the delayed-switch-on
     // Similar is true for switching off.
     // All delays are in seconds/loop-iterations
@@ -87,17 +121,19 @@ static void actuatorsTask(void *arg)
 
     if (actuatorReqeuest0 && !actuatorActual0)
     {
-      displayQMesg.index = 0; 
-      displayQMesg.data.actuator = 1;
-      displayQMesg.duration = onDelaySec0;
-      xQueueSend(displayQueue, &displayQMesg, 0);
+      controllerMsg.type                    = e_mtype_backend;
+      controllerMsg.mesg.backendMesg.mesgId = e_msg_backend_act_delay;
+      controllerMsg.mesg.backendMesg.number = 0;
+      controllerMsg.mesg.backendMesg.data   = onDelaySec0;
+      controllerQueueSend(&controllerMsg, 0);
     }
 
     // switch on if onDelay is not counting
     if (actuatorReqeuest0 && !actuatorActual0 && (onDelaySec0 == 0))
     {
-      printf("[ACTUATORS] RELAY0 ON !!!\n");
-      digitalWrite(CFG_RELAY0_PIN, CFG_RELAY0_ON_LEVEL);
+      // printf("[ACTUATORS] RELAY0 ON !!!\n");
+      ESP_LOGI(LOG_TAG,"RELAY0 ON !!!");
+      setActuator(0, 1);
       actuatorActual0 = 1;
       offDelaySec0 = CFG_RELAY0_OFF_DELAY;
     }
@@ -116,17 +152,19 @@ static void actuatorsTask(void *arg)
 
     if (!actuatorReqeuest0 && actuatorActual0)
     {
-      displayQMesg.index = 0; 
-      displayQMesg.data.actuator = 0;
-      displayQMesg.duration = offDelaySec0;
-      xQueueSend(displayQueue, &displayQMesg, 0);
+      controllerMsg.type                    = e_mtype_backend;
+      controllerMsg.mesg.backendMesg.mesgId = e_msg_backend_act_delay;
+      controllerMsg.mesg.backendMesg.number = 0;
+      controllerMsg.mesg.backendMesg.data   = offDelaySec0;
+      controllerQueueSend(&controllerMsg, 0);
     }
 
     // switch off if offDelay is not counting
     if (!actuatorReqeuest0 && actuatorActual0 && (offDelaySec0 == 0))
     {
-      printf("[ACTUATORS] RELAY0 OFF !!!\n");
-      digitalWrite(CFG_RELAY0_PIN, !CFG_RELAY0_ON_LEVEL);
+      // printf("[ACTUATORS] RELAY0 OFF !!!\n");
+      ESP_LOGI(LOG_TAG,"RELAY0 OFF !!!");
+      setActuator(0, 0);
       actuatorActual0 = 0;
       onDelaySec0 = CFG_RELAY0_ON_DELAY;
     }
@@ -150,17 +188,19 @@ static void actuatorsTask(void *arg)
 
     if (actuatorReqeuest1 && !actuatorActual1)
     {
-      displayQMesg.index = 1; 
-      displayQMesg.data.actuator = 1;
-      displayQMesg.duration = onDelaySec1;
-      xQueueSend(displayQueue, &displayQMesg, 0);
+      controllerMsg.type                    = e_mtype_backend;
+      controllerMsg.mesg.backendMesg.mesgId = e_msg_backend_act_delay;
+      controllerMsg.mesg.backendMesg.number = 1;
+      controllerMsg.mesg.backendMesg.data   = onDelaySec1;
+      controllerQueueSend(&controllerMsg, 0);
     }
 
     // switch on if onDelay is not counting
     if (actuatorReqeuest1 && !actuatorActual1 && (onDelaySec1 == 0))
     {
-      printf("[ACTUATORS] RELAY1 ON !!!\n");
-      digitalWrite(CFG_RELAY1_PIN, CFG_RELAY1_ON_LEVEL);
+      // printf("[ACTUATORS] RELAY1 ON !!!\n");
+      ESP_LOGI(LOG_TAG,"RELAY1 ON !!!");
+      setActuator(1, 1);
       actuatorActual1 = 1;
       offDelaySec1 = CFG_RELAY1_OFF_DELAY;
     }
@@ -179,17 +219,19 @@ static void actuatorsTask(void *arg)
 
     if (!actuatorReqeuest1 && actuatorActual1)
     {
-      displayQMesg.index = 1; 
-      displayQMesg.data.actuator = 0;
-      displayQMesg.duration = offDelaySec1;
-      xQueueSend(displayQueue, &displayQMesg, 0);
+      controllerMsg.type                      = e_mtype_backend;
+      controllerMsg.mesg.backendMesg.mesgId = e_msg_backend_act_delay;
+      controllerMsg.mesg.backendMesg.number = 1;
+      controllerMsg.mesg.backendMesg.data   = offDelaySec1;
+      controllerQueueSend(&controllerMsg, 0);   
     }
 
     // switch off if offDelay is not counting
     if (!actuatorReqeuest1 && actuatorActual1 && (offDelaySec1 == 0))
     {
-      printf("[ACTUATORS] RELAY1 OFF !!!\n");
-      digitalWrite(CFG_RELAY1_PIN, !CFG_RELAY1_ON_LEVEL);
+      // printf("[ACTUATORS] RELAY1 OFF !!!\n");
+      ESP_LOGI(LOG_TAG,"RELAY1 OFF !!!");
+      setActuator(1, 0);
       actuatorActual1 = 0;
       onDelaySec1 = CFG_RELAY1_ON_DELAY;
     }
@@ -202,30 +244,49 @@ static void actuatorsTask(void *arg)
       }
     }
 
-    if (( onDelaySec1 > 0) || (offDelaySec1 > 0) )
-    {
-      // printf("[ACTUATORS] onDelaySec1=%d - offDelaySec1=%d\n", onDelaySec1, offDelaySec1);
-    }
+    // if (( onDelaySec1 > 0) || (offDelaySec1 > 0) )
+    // {
+    //   printf("[ACTUATORS] onDelaySec1=%d - offDelaySec1=%d\n", onDelaySec1, offDelaySec1);
+    // }
 
   }
 };
+
+
+
+// wrapper for sendQueue 
+int actuatorsQueueSend(actuatorQueueItem_t * actuatorQMesg, TickType_t xTicksToWait)
+{
+  int r;
+  r = pdTRUE;
+
+  if (actuatorsQueue != NULL)
+  {
+    r =  xQueueSend(actuatorsQueue, actuatorQMesg , xTicksToWait);
+  }
+
+  return r;
+}
+
 
 
 void initActuators(void)
 {
   static TaskHandle_t actuatorsTaskHandle = NULL;
 
-  printf("[ACTUATORS] init\n");
+  // printf("[ACTUATORS] init\n");
+  ESP_LOGI(LOG_TAG,"initActuators()");
 
   actuatorsQueue = xQueueCreate(5, sizeof(actuatorQueueItem_t));
 
   if (actuatorsQueue == 0)
   {
-    printf("[ACTUATORS] Cannot create actuatorsQueue. This is FATAL\n");
+    // printf("[ACTUATORS] Cannot create actuatorsQueue. This is FATAL\n");
+    ESP_LOGE(LOG_TAG,"Cannot create actuatorsQueue. This is FATAL");
   }
 
   // create task
-  xTaskCreatePinnedToCore(actuatorsTask, "actuatorsTask", 4096, NULL, 10, &actuatorsTaskHandle, 0);
+  xTaskCreate(actuatorsTask, "actuatorsTask", 4 * 1024, NULL, 10, &actuatorsTaskHandle);
 }
 
 // end of file

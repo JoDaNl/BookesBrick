@@ -1,0 +1,14 @@
+{
+  "codename": "weight25Font",
+  "ttf_path": "/assets/fonts/digital-7 (mono italic).ttf",
+  "bin_path": "/assets/fonts\\ui_font_weight25Font.bin",
+  "c_path": "/assets/fonts\\ui_font_weight25Font.c",
+  "cfg_path": "/assets/fonts\\ui_font_weight25Font.fcfg",
+  "size": 25,
+  "bpp": 8,
+  "letters": 0,
+  "ranges": [],
+  "symbols": "\" +-.:0123456789HILO\"",
+  "customparams": "--no-compress --no-prefilter",
+  "uploaded": false
+}

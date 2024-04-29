@@ -4,3 +4,6 @@
 .vscode/extensions.json
 .vscode/launch.json
 .vscode/ipch
+squareline/autosave
+squareline/backup
+squareline/cache

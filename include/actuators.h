@@ -5,16 +5,13 @@
 #include <Arduino.h>
 
 
-
 typedef struct actuatorQueueItem
 {
-  uint8_t number;
-  uint8_t onOff;
+  uint8_t data;        // every bit corresponds with an actuator
 } actuatorQueueItem_t;
 
-
-extern xQueueHandle actuatorsQueue;
-
+extern int actuatorsQueueSend(actuatorQueueItem_t *, TickType_t);
+extern void powerUpActuators(void);
 extern void initActuators(void);
 
 #endif
