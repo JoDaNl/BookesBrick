@@ -139,6 +139,8 @@ void displayTask(void *arg)
   static uint16_t setPointx10 = 0;
   static bool setPointx10Valid = false;
 
+  static uint32_t compDelayPerc = 0;
+
   static uint8_t actuator0 = 0;
   static uint8_t actuator1 = 0;
 
@@ -280,45 +282,31 @@ void displayTask(void *arg)
           actuator1 = 0;
         }
 
-        printf("[DISPLAY] 2 e_actuator\n");
-
         if ((actuator0 == 0) && (actuator1 == 0))
         {
-          printf("[DISPLAY] 3a e_actuator\n");
-
-          // lv_label_set_text(ui_coolHeatLabel, "OFF");
-          // lv_obj_add_style(ui_coolHeatLabel, &style_text_off, 0);
-          // lv_obj_add_flag(ui_coolHeatBar, LV_OBJ_FLAG_HIDDEN);
-
           lv_obj_add_flag(ui_coolLabel, LV_OBJ_FLAG_HIDDEN);
           lv_obj_add_flag(ui_heatLabel, LV_OBJ_FLAG_HIDDEN);
           lv_obj_clear_flag(ui_offLabel,LV_OBJ_FLAG_HIDDEN);
           lv_obj_add_flag(ui_coolBar, LV_OBJ_FLAG_HIDDEN);
           lv_obj_add_flag(ui_heatBar, LV_OBJ_FLAG_HIDDEN);
-
         }
         else
         {
 
           if (actuator0 == 1)
           {
-            // printf("[DISPLAY] 3b e_actuator\n");
-
             lv_obj_clear_flag(ui_coolLabel, LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(ui_heatLabel, LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(ui_offLabel,LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(ui_coolBar, LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(ui_heatBar, LV_OBJ_FLAG_HIDDEN);
 
-            // cool can start at 0%
-            lv_bar_set_value(ui_coolBar, 0, LV_ANIM_OFF);
-            // printf("[DISPLAY] 3c e_actuator\n");
+            // cool starts at compressor-delay value
+            lv_bar_set_value(ui_coolBar, compDelayPerc, LV_ANIM_OFF);
           }
 
           if (actuator1 == 1)
           {
-            // printf("[DISPLAY] 3d e_actuator\n");
-
             lv_obj_add_flag(ui_coolLabel, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(ui_heatLabel, LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(ui_offLabel,LV_OBJ_FLAG_HIDDEN);
@@ -327,19 +315,18 @@ void displayTask(void *arg)
 
             // Heat is always 100%
             lv_bar_set_value(ui_heatBar, 100, LV_ANIM_OFF);
-            // printf("[DISPLAY] 3e e_actuator\n");
           }
         }
-
-        // printf("[DISPLAY] 4a e_actuator\n");
-        vTaskDelay(100 / portTICK_RATE_MS); 
-        // printf("[DISPLAY] 4b e_actuator\n");
         break;
 
       case e_delay:
-        static uint32_t perc;
-        perc = 100 - (100 * qMesg.data.compDelay) / CFG_RELAY0_ON_DELAY;
-        lv_bar_set_value(ui_coolBar, perc, LV_ANIM_OFF);
+        // only use compressor delay for actuator '0' 
+        if (qMesg.number == 0)
+        {
+          compDelayPerc = 100 - (100 * qMesg.data.compDelay) / CFG_RELAY0_ON_DELAY;
+          printf("[DISPLAY] compressor-delay=%d sec, %d /%\n",qMesg.data.compDelay,compDelayPerc);
+          lv_bar_set_value(ui_coolBar, compDelayPerc, LV_ANIM_OFF);
+        }
         break;
 
       case e_rssi:

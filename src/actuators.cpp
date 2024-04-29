@@ -51,7 +51,7 @@ static void setActuator(uint8_t number, uint8_t onOff)
   if (valid)
   {
     digitalWrite(pin, onLevel);
-    // printf("[ACTUATORS] digitalWrite(%d, %d)\n",pin, onLevel);    
+    printf("[ACTUATORS] digitalWrite(%d, %d)\n",pin, onLevel);    
     ESP_LOGI(LOG_TAG,"digitalWrite(%d, %d)",pin, onLevel);
   }
 }

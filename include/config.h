@@ -21,19 +21,19 @@
 //=============================================
 
 // Relay outputs
-#define CFG_RELAY0_PIN          GPIO_NUM_22
-#define CFG_RELAY0_ON_LEVEL     1
-#define CFG_RELAY0_OUTPUT_TYPE  OUTPUT      // or OUTPUT_OPENDRAIN
-#define CFG_RELAY0_ON_DELAY     200         // compressor-delay in seconds
-#define CFG_RELAY0_OFF_DELAY    0
-#define CFG_RELAY0_LABEL        "Cool"
+#define CFG_RELAY0_PIN                  GPIO_NUM_17
+#define CFG_RELAY0_ON_LEVEL             0
+#define CFG_RELAY0_OUTPUT_TYPE          OUTPUT_OPEN_DRAIN     // or OUTPUT
+#define CFG_RELAY0_ON_DELAY             200                   // compressor-delay in seconds
+#define CFG_RELAY0_OFF_DELAY            0
+#define CFG_RELAY0_LABEL                "Cool"
 
-#define CFG_RELAY1_PIN          GPIO_NUM_27
-#define CFG_RELAY1_ON_LEVEL     1
-#define CFG_RELAY1_OUTPUT_TYPE  OUTPUT
-#define CFG_RELAY1_ON_DELAY     0
-#define CFG_RELAY1_OFF_DELAY    0
-#define CFG_RELAY1_LABEL        "Heat"
+#define CFG_RELAY1_PIN                  GPIO_NUM_4
+#define CFG_RELAY1_ON_LEVEL             0
+#define CFG_RELAY1_OUTPUT_TYPE          OUTPUT_OPEN_DRAIN
+#define CFG_RELAY1_ON_DELAY             0
+#define CFG_RELAY1_OFF_DELAY            0
+#define CFG_RELAY1_LABEL                "Heat"
 
 //=============================================
 
