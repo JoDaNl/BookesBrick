@@ -9,10 +9,10 @@
 
 //=============================================
 
-#define CFG_TEMP_SENSOR_SIMULATION  true
-#define CFG_TEMP_PIN                GPIO_NUM_22
-#define CFG_TEMP_IN_CELCIUS         true
-//#define CFG_TEMP_IN_FARENHEID   true
+#define CFG_TEMP_SENSOR_SIMULATION      true
+#define CFG_TEMP_PIN                    GPIO_NUM_16  // Green led on CYD
+#define CFG_TEMP_IN_CELCIUS             true
+//#define CFG_TEMP_IN_FARENHEID          true
 
 //=============================================
 
@@ -67,16 +67,15 @@
 
 //=============================================
 
-#define BBPREFS                     "bbPrefs"
-#define BBPREFS_APIKEY              "bbPrApiKey"
-#define BBPREFS_PROAPIKEY           "bbPrProApiKey"
-#define BBPREFS_SSID                "bbPrSSID"
-#define BBPREFS_PASSWD              "bbPrPasswd"
-#define BBPREFS_HOSTNAME            "bbPrHostname"
+#define BBPREFS                         "bbPrefs"
+#define BBPREFS_APIKEY                  "bbPrApiKey"
+#define BBPREFS_PROAPIKEY               "bbPrProApiKey"
+#define BBPREFS_SSID                    "bbPrSSID"
+#define BBPREFS_PASSWD                  "bbPrPasswd"
+#define BBPREFS_HOSTNAME                "bbPrHostname"
 
-#define BBDRDTIMEOUT                10
-#define BBPINGURL                   CFG_COMM_BBURL_API_SERVER
-
+#define BBDRDTIMEOUT                    10
+#define BBPINGURL                       CFG_COMM_BBURL_API_SERVER
 
 //=============================================
 
