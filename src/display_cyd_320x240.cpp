@@ -118,14 +118,13 @@ void initDisplay_cyd_320x240(void)
   // init TFT display & LVGL
   ESP_LOGI(LOG_TAG, "void initDisplay_cyd_320x240");
 
-  smartdisplay_lcd_set_backlight(0.0f);
   smartdisplay_init();
+  smartdisplay_lcd_set_backlight(0.0f);
 
   auto disp = lv_disp_get_default();
   lv_disp_set_rotation(disp, LV_DISP_ROT_270);
   ui_init();
   lv_disp_load_scr(ui_mainScreen);
-  smartdisplay_lcd_set_backlight(1.0f);
 }
 
 // ============================================================================
@@ -159,7 +158,10 @@ void displayTask(void *arg)
 
   static String deviceName;
 
-  lv_label_set_text(ui_testLabel, LV_SYMBOL_SETTINGS LV_SYMBOL_OK);
+  static float lcdBacklight = 0.0;
+
+
+  // lv_label_set_text(ui_testLabel, LV_SYMBOL_SETTINGS LV_SYMBOL_OK);
 
   ui_setp_serie = lv_chart_add_series(ui_temperatureChart, lv_color_hex(0x808080), LV_CHART_AXIS_PRIMARY_Y);
   ui_temp_serie = lv_chart_add_series(ui_temperatureChart, lv_color_hex(0x101010), LV_CHART_AXIS_PRIMARY_Y);
@@ -324,7 +326,7 @@ void displayTask(void *arg)
         if (qMesg.number == 0)
         {
           compDelayPerc = 100 - (100 * qMesg.data.compDelay) / CFG_RELAY0_ON_DELAY;
-          printf("[DISPLAY] compressor-delay=%d sec, %d /%\n",qMesg.data.compDelay,compDelayPerc);
+          // printf("[DISPLAY] compressor-delay=%d sec, %d\%\n",qMesg.data.compDelay,compDelayPerc);
           lv_bar_set_value(ui_coolBar, compDelayPerc, LV_ANIM_OFF);
         }
         break;
@@ -442,9 +444,19 @@ void displayTask(void *arg)
 
     // Update LVGL-GUI
     lv_timer_handler();
+    
+    // increment backlight to full brightness
+    // this is done after (1st) invocation of lv_imer_handler() to make
+    // sure display buffer has valid content and no random pixels (after power-up)
+    if (lcdBacklight < 1.0)
+    {     
+      lcdBacklight += 0.02;
+      smartdisplay_lcd_set_backlight(lcdBacklight);
+    }
+
   }
 };
 
 #endif
 
-// end of file
+// end of file;

@@ -53,6 +53,7 @@ lv_obj_t * ui_testLabel;
 lv_obj_t * ui_setLabel;
 lv_obj_t * ui_modePanel;
 lv_obj_t * ui_modeLabel;
+lv_obj_t * ui_emptyContainer;
 lv_obj_t * ui_confirmContainer;
 lv_obj_t * ui_confirmPanel;
 lv_obj_t * ui_confirmTextLabel;

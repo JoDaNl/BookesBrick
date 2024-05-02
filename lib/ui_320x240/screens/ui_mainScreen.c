@@ -295,7 +295,7 @@ void ui_mainScreen_screen_init(void)
     lv_obj_remove_style_all(ui_backendContainer);
     lv_obj_set_width(ui_backendContainer, 80);
     lv_obj_set_height(ui_backendContainer, 22);
-    lv_obj_set_x(ui_backendContainer, -68);
+    lv_obj_set_x(ui_backendContainer, -67);
     lv_obj_set_y(ui_backendContainer, 0);
     lv_obj_set_align(ui_backendContainer, LV_ALIGN_CENTER);
     lv_obj_clear_flag(ui_backendContainer, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);      /// Flags
@@ -448,7 +448,7 @@ void ui_mainScreen_screen_init(void)
     lv_obj_set_width(ui_setPanel, 40);
     lv_obj_set_height(ui_setPanel, 21);
     lv_obj_set_x(ui_setPanel, 0);
-    lv_obj_set_y(ui_setPanel, -1);
+    lv_obj_set_y(ui_setPanel, 30);
     lv_obj_set_align(ui_setPanel, LV_ALIGN_CENTER);
     lv_obj_clear_flag(ui_setPanel, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
 
@@ -472,7 +472,7 @@ void ui_mainScreen_screen_init(void)
     lv_obj_set_width(ui_modePanel, 54);
     lv_obj_set_height(ui_modePanel, 21);
     lv_obj_set_x(ui_modePanel, 51);
-    lv_obj_set_y(ui_modePanel, -1);
+    lv_obj_set_y(ui_modePanel, 30);
     lv_obj_set_align(ui_modePanel, LV_ALIGN_CENTER);
     lv_obj_clear_flag(ui_modePanel, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
 
@@ -481,6 +481,17 @@ void ui_mainScreen_screen_init(void)
     lv_obj_set_height(ui_modeLabel, LV_SIZE_CONTENT);    /// 1
     lv_obj_set_align(ui_modeLabel, LV_ALIGN_CENTER);
     lv_label_set_text(ui_modeLabel, "MODE");
+
+    ui_emptyContainer = lv_obj_create(ui_statusContainer);
+    lv_obj_remove_style_all(ui_emptyContainer);
+    lv_obj_set_width(ui_emptyContainer, 105);
+    lv_obj_set_height(ui_emptyContainer, 22);
+    lv_obj_set_x(ui_emptyContainer, 29);
+    lv_obj_set_y(ui_emptyContainer, 0);
+    lv_obj_set_align(ui_emptyContainer, LV_ALIGN_CENTER);
+    lv_obj_clear_flag(ui_emptyContainer, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_SCROLLABLE);      /// Flags
+    lv_obj_set_style_bg_color(ui_emptyContainer, lv_color_hex(0xE1E1E1), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_emptyContainer, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_confirmContainer = lv_obj_create(ui_mainScreen);
     lv_obj_remove_style_all(ui_confirmContainer);

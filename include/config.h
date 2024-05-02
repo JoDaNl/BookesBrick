@@ -56,7 +56,7 @@
 #define CFG_COMM_DEVICE_VERSION         "0.2" 
 #define CFG_COMM_PROAPI_INTERVAL        60  // query PRO-API every n seconds
 
-#define CFG_COMM_NTPREQUEST_INTERVAL    60
+#define CFG_COMM_TIMEREQUEST_INTERVAL   60
 
 #define CFG_COMM_WM_DEBUG               true
 #define cfg_COMM_WM_RESET_SETTINGS      false // TODO: CHECK

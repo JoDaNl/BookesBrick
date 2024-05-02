@@ -69,6 +69,7 @@ extern lv_obj_t * ui_testLabel;
 extern lv_obj_t * ui_setLabel;
 extern lv_obj_t * ui_modePanel;
 extern lv_obj_t * ui_modeLabel;
+extern lv_obj_t * ui_emptyContainer;
 extern lv_obj_t * ui_confirmContainer;
 extern lv_obj_t * ui_confirmPanel;
 extern lv_obj_t * ui_confirmTextLabel;
