@@ -4,7 +4,11 @@
 .vscode/extensions.json
 .vscode/launch.json
 .vscode/ipch
-squareline/autosave
-squareline/backup
-squareline/cache
 .vscode/extensions.json
+squareline/ui_320x240/autosave
+squareline/ui_320x240/backup
+squareline/ui_320x240/cache
+squareline/ui_480x320/autosave
+squareline/ui_480x320/backup
+squareline/ui_480x320/cache
+squareline/ui_test

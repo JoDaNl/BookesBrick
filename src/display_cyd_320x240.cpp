@@ -12,6 +12,7 @@
 
 #define LOG_TAG "display"
 
+
 typedef enum
 {
   TEMP_SERIE,
@@ -445,6 +446,29 @@ void displayTask(void *arg)
     // Update LVGL-GUI
     lv_timer_handler();
     
+#if (CFG_ENABLE_SCREENSHOT == true)
+    static int prevButton = 1;
+    extern lv_disp_drv_t disp_drv;
+    uint8_t * ptr;
+
+    // GPIO_NUM_0 == BOOT button 
+    if (digitalRead(GPIO_NUM_0) == 0 && prevButton == 1)
+    {
+      printf("[DISPLAY] SCREENSHOT\n");   
+
+      ptr = (uint8_t *)disp_drv.draw_buf->buf1;
+      for(int x=0; x<disp_drv.hor_res-1; x++)
+      {
+        printf("[SHOT] x=%03d: ",x);
+        for(int y=0; y<disp_drv.ver_res; y++)
+        {
+          printf("%02X,",*ptr++);
+        }
+        printf("%02X\n",*ptr++);
+      }
+    }
+#endif
+
     // increment backlight to full brightness
     // this is done after (1st) invocation of lv_imer_handler() to make
     // sure display buffer has valid content and no random pixels (after power-up)

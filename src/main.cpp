@@ -80,14 +80,6 @@ void setup()
     //   delay(10);
   }
 
-  // Test BOOT button
-  // pinMode(GPIO_NUM_0, INPUT);
-  // while (true)
-  // {
-  //   printf("[MAIN] GPIO0=%d\n", digitalRead(GPIO_NUM_0));
-  //   vTaskDelay(200 / portTICK_RATE_MS);
-  // }
-
 };
 
 void loop()
