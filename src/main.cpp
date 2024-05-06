@@ -80,6 +80,17 @@ void setup()
     //   delay(10);
   }
 
+  // int p=0;
+
+  // pinMode(GPIO_NUM_16, OUTPUT);
+
+  // while(true)
+  // {
+  //   digitalWrite(GPIO_NUM_16,p);
+  //   p = ~p;
+  //   vTaskDelay(100 / portTICK_RATE_MS);
+  // }
+
 };
 
 void loop()

@@ -9,10 +9,13 @@
 
 //=============================================
 
-#define CFG_TEMP_SENSOR_SIMULATION      true
-#define CFG_TEMP_PIN                    GPIO_NUM_16  // Green led on CYD
+#define CFG_TEMP_SENSOR_SIMULATION      false
+#define CFG_TEMP_PIN                    GPIO_NUM_10  // 16 = Green led on CYD
 #define CFG_TEMP_IN_CELCIUS             true
 //#define CFG_TEMP_IN_FARENHEID          true
+#define CFG_TEMP_SMOOTH_SAMPLES         7             // must be odd number
+#define CFG_TEMP_MAX_DEVIATIONB         10            // 1 degree * 10
+#define CFG_TEMP_DS18B20_CHECK_COUNTERFEIT   true
 
 //=============================================
 

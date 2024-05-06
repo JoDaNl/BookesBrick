@@ -6156,7 +6156,7 @@
               {
                 "nid": 1447635823,
                 "strtype": "OBJECT/Clickable",
-                "strval": "False",
+                "strval": "True",
                 "InheritedType": 2
               },
               {
@@ -6418,6 +6418,71 @@
                 "strtype": "PANEL/Style_scrollbar",
                 "strval": "lv.PART.SCROLLBAR, Rectangle, Pad",
                 "InheritedType": 11
+              },
+              {
+                "disabled": false,
+                "nid": -296850534,
+                "strtype": "PANEL/EventHandler",
+                "strval": "CLICKED",
+                "childs": [
+                  {
+                    "nid": 197339680,
+                    "strtype": "_custom/name",
+                    "strval": "clicked",
+                    "InheritedType": 10
+                  },
+                  {
+                    "nid": 1703288799,
+                    "strtype": "_custom/condition_C",
+                    "strval": "",
+                    "InheritedType": 10
+                  },
+                  {
+                    "nid": 1306725852,
+                    "strtype": "_custom/condition_P",
+                    "strval": "",
+                    "InheritedType": 10
+                  },
+                  {
+                    "nid": -182292895,
+                    "strtype": "_custom/action",
+                    "strval": "CALL FUNCTION",
+                    "childs": [
+                      {
+                        "nid": 220017906,
+                        "strtype": "CALL FUNCTION/Name",
+                        "strval": "CALL FUNCTION",
+                        "InheritedType": 10
+                      },
+                      {
+                        "nid": -2139837346,
+                        "strtype": "CALL FUNCTION/Call",
+                        "strval": "<{Function_name}>( event_struct )",
+                        "InheritedType": 10
+                      },
+                      {
+                        "nid": 1299997641,
+                        "strtype": "CALL FUNCTION/CallC",
+                        "strval": "<{Function_name}>( e );",
+                        "InheritedType": 10
+                      },
+                      {
+                        "nid": 1858965952,
+                        "strtype": "CALL FUNCTION/Function_name",
+                        "strval": "cb_clicked",
+                        "InheritedType": 10
+                      },
+                      {
+                        "nid": -234047997,
+                        "strtype": "CALL FUNCTION/Dont_export_function",
+                        "strval": "True",
+                        "InheritedType": 2
+                      }
+                    ],
+                    "InheritedType": 10
+                  }
+                ],
+                "InheritedType": 4
               }
             ],
             "saved_objtypeKey": "PANEL"
@@ -21068,7 +21133,7 @@
     "theme_color2": 0,
     "uiExportFolderPath": "...\\..\\..\\lib\\ui_320x240",
     "projectExportFolderPath": "",
-    "backup_cnt": 297,
+    "backup_cnt": 299,
     "autosave_cnt": 0,
     "lvgl_version": "8.3.6",
     "callfuncsexport": "C_FILE",

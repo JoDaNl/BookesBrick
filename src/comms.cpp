@@ -46,7 +46,7 @@ static bool rtcValid;
 // CALL IOT API: SEND TEMPERATURE TO BACKEND AND GET NEW ACTUATOR VALUES
 // - return value is next temperature request (in sec)
 // ============================================================================
-static uint16_t callBricksAPI(uint16_t temperature)
+static uint16_t callBierBotIOTAPI(uint16_t temperature)
 {
   static uint8_t updatedActuator;
   static uint64_t chipId;
@@ -403,7 +403,7 @@ static void communicationTask(void *arg)
   // API-request times in seconds
   nextAPIRequestSecMax  = 10;
   nextAPIRequestSec     = nextAPIRequestSecMax;
-  nextPROAPIRequestSec  = 20;
+  nextPROAPIRequestSec  = 0; // will call the API as soon as 'usedForDevices' is known
   nextTimeRequestSec    = 5;
 
   // TASK LOOP
@@ -424,7 +424,7 @@ static void communicationTask(void *arg)
       }
       else
       {
-        nextAPIRequestSecMax = callBricksAPI(temperature);
+        nextAPIRequestSecMax = callBierBotIOTAPI(temperature);
         // just limit max to 255 (cannot send larger nr's to display)
         if (nextAPIRequestSecMax > 255)
         {

@@ -46,6 +46,7 @@ extern lv_obj_t * ui_coolLabel;
 extern lv_obj_t * ui_heatLabel;
 extern lv_obj_t * ui_coolBar;
 extern lv_obj_t * ui_heatBar;
+void ui_event_infoPanel(lv_event_t * e);
 extern lv_obj_t * ui_infoPanel;
 extern lv_obj_t * ui_temperatureChart;
 extern lv_obj_t * ui_statusContainer;
@@ -79,6 +80,27 @@ extern lv_obj_t * ui_OKLabel;
 extern lv_obj_t * ui_CANCELButton;
 extern lv_obj_t * ui_CANCELLabel;
 extern lv_obj_t * ui_Switch1;
+// SCREEN: ui_configurationScreen
+void ui_configurationScreen_screen_init(void);
+extern lv_obj_t * ui_configurationScreen;
+extern lv_obj_t * ui_TitleContainer1;
+extern lv_obj_t * ui_titleLabel1;
+extern lv_obj_t * ui_tempPanel1;
+extern lv_obj_t * ui_statusContainer1;
+extern lv_obj_t * ui_setPanel1;
+extern lv_obj_t * ui_testLabel1;
+extern lv_obj_t * ui_setLabel1;
+extern lv_obj_t * ui_modePanel1;
+extern lv_obj_t * ui_modeLabel1;
+extern lv_obj_t * ui_confirmContainer1;
+extern lv_obj_t * ui_confirmPanel1;
+extern lv_obj_t * ui_confirmTextLabel1;
+void ui_event_OKButton1(lv_event_t * e);
+extern lv_obj_t * ui_OKButton1;
+extern lv_obj_t * ui_OKLabel1;
+extern lv_obj_t * ui_CANCELButton1;
+extern lv_obj_t * ui_CANCELLabel1;
+extern lv_obj_t * ui_Switch2;
 extern lv_obj_t * ui____initial_actions0;
 
 

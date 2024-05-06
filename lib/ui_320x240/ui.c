@@ -30,6 +30,7 @@ lv_obj_t * ui_coolLabel;
 lv_obj_t * ui_heatLabel;
 lv_obj_t * ui_coolBar;
 lv_obj_t * ui_heatBar;
+void ui_event_infoPanel(lv_event_t * e);
 lv_obj_t * ui_infoPanel;
 lv_obj_t * ui_temperatureChart;
 lv_obj_t * ui_statusContainer;
@@ -63,6 +64,29 @@ lv_obj_t * ui_OKLabel;
 lv_obj_t * ui_CANCELButton;
 lv_obj_t * ui_CANCELLabel;
 lv_obj_t * ui_Switch1;
+
+
+// SCREEN: ui_configurationScreen
+void ui_configurationScreen_screen_init(void);
+lv_obj_t * ui_configurationScreen;
+lv_obj_t * ui_TitleContainer1;
+lv_obj_t * ui_titleLabel1;
+lv_obj_t * ui_tempPanel1;
+lv_obj_t * ui_statusContainer1;
+lv_obj_t * ui_setPanel1;
+lv_obj_t * ui_testLabel1;
+lv_obj_t * ui_setLabel1;
+lv_obj_t * ui_modePanel1;
+lv_obj_t * ui_modeLabel1;
+lv_obj_t * ui_confirmContainer1;
+lv_obj_t * ui_confirmPanel1;
+lv_obj_t * ui_confirmTextLabel1;
+void ui_event_OKButton1(lv_event_t * e);
+lv_obj_t * ui_OKButton1;
+lv_obj_t * ui_OKLabel1;
+lv_obj_t * ui_CANCELButton1;
+lv_obj_t * ui_CANCELLabel1;
+lv_obj_t * ui_Switch2;
 lv_obj_t * ui____initial_actions0;
 
 ///////////////////// TEST LVGL SETTINGS ////////////////////
@@ -76,12 +100,28 @@ lv_obj_t * ui____initial_actions0;
 ///////////////////// ANIMATIONS ////////////////////
 
 ///////////////////// FUNCTIONS ////////////////////
+void ui_event_infoPanel(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_CLICKED) {
+        cb_clicked(e);
+    }
+}
 void ui_event_OKButton(lv_event_t * e)
 {
     lv_event_code_t event_code = lv_event_get_code(e);
     lv_obj_t * target = lv_event_get_target(e);
     if(event_code == LV_EVENT_LONG_PRESSED) {
         _ui_flag_modify(ui_confirmContainer, LV_OBJ_FLAG_HIDDEN, _UI_MODIFY_FLAG_ADD);
+    }
+}
+void ui_event_OKButton1(lv_event_t * e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    lv_obj_t * target = lv_event_get_target(e);
+    if(event_code == LV_EVENT_LONG_PRESSED) {
+        _ui_flag_modify(ui_confirmContainer1, LV_OBJ_FLAG_HIDDEN, _UI_MODIFY_FLAG_ADD);
     }
 }
 
@@ -94,6 +134,7 @@ void ui_init(void)
                                                false, LV_FONT_DEFAULT);
     lv_disp_set_theme(dispp, theme);
     ui_mainScreen_screen_init();
+    ui_configurationScreen_screen_init();
     ui____initial_actions0 = lv_obj_create(NULL);
     lv_disp_load_scr(ui_mainScreen);
 }

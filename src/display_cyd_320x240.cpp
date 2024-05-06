@@ -72,6 +72,14 @@ static void cb_chart_draw_event(lv_event_t *e)
   }
 }
 
+void cb_clicked(lv_event_t * e)
+{
+  lv_event_code_t code = lv_event_get_code(e);
+  lv_obj_t *btn = lv_event_get_target(e);
+  printf("*\n");
+}
+
+
 static void displayTemperature(float temperature, bool valid, lv_obj_t *temperatureLabel, lv_obj_t *temperatureLabelSmall, float lowRange, float highRange)
 {
   static String temperatureStr;
