@@ -68,7 +68,7 @@
 #define CFG_COMM_WM_PORTAL_PIN          GPIO_NUM_4
 #define CFG_COMM_HOSTNAME               "bookesbrick"
 
-#define CFG_ENABLE_SCREENSHOT           false
+#define CFG_ENABLE_SCREENSHOT           true
 
 //=============================================
 

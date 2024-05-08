@@ -40,6 +40,7 @@ static void cb_chart_draw_event(lv_event_t *e)
 
   dsc = lv_event_get_draw_part_dsc(e);
 
+  // Customize chart series
   if ((dsc->part == LV_PART_ITEMS) && (dsc->p1 != NULL) && (dsc->p2 != NULL))
   {
     // get current serie
@@ -70,6 +71,13 @@ static void cb_chart_draw_event(lv_event_t *e)
       lv_draw_mask_remove_id(line_mask_id);
     }
   }
+
+  // Customize labels of Y-axes...i.e. divide graph values by 10 (graph does not handle floats)
+  if (dsc->part == LV_PART_TICKS)
+  {
+    lv_snprintf(dsc->text, sizeof(dsc->text), "%d", dsc->value/10);
+  }
+
 }
 
 void cb_clicked(lv_event_t * e)
@@ -198,13 +206,16 @@ void displayTask(void *arg)
         // Update graph
         if (qMesg.valid)
         {
-          temp_value = qMesg.data.temperature / 10.0;
-          setp_value = setPointx10Valid ? setPointx10 / 10.0 : LV_CHART_POINT_NONE;
+          // both temp & set-point are  * 10
+          temp_value = qMesg.data.temperature;
+          setp_value = setPointx10Valid ? setPointx10 : LV_CHART_POINT_NONE;
+          // temp_value = qMesg.data.temperature / 10.0;
+          // setp_value = setPointx10Valid ? setPointx10 / 10.0 : LV_CHART_POINT_NONE;
 
           if (actuator0 == 1)
           {
             // Y-value is >1 so serie-line will be outside of visible area of graph !
-            lv_chart_set_next_value(ui_temperatureChart, ui_cool_serie, 2);
+            lv_chart_set_next_value(ui_temperatureChart, ui_cool_serie, 2*10);
           }
           else
           {
@@ -214,7 +225,7 @@ void displayTask(void *arg)
           if (actuator1 == 1)
           {
             // Y-value is >1 so serie-line will be outside of visible area of graph !
-            lv_chart_set_next_value(ui_temperatureChart, ui_heat_serie, 2);
+            lv_chart_set_next_value(ui_temperatureChart, ui_heat_serie, 2*10);
           }
           else
           {
@@ -235,8 +246,8 @@ void displayTask(void *arg)
           if (setPointx10Valid)
           {
             // init min/max with setPoint, so target-temp will always be in view of graph
-            y_min = setPointx10 / 10;
-            y_max = setPointx10 / 10;
+            y_min = setPointx10;
+            y_max = setPointx10;
           }
           else
           {
@@ -245,7 +256,7 @@ void displayTask(void *arg)
             y_max = *y_array;
           }
 
-          // loop from FIRSt to last data-point. Also works if we have only 1 datapoint.
+          // loop from FIRST to last data-point. Also works if we have only 1 datapoint.
           for (uint16_t i = 0; i < y_count; i++)
           {
             if (*y_array != LV_CHART_POINT_NONE)
@@ -475,6 +486,59 @@ void displayTask(void *arg)
         printf("%02X\n",*ptr++);
       }
     }
+
+    // static int prevButton = 1;
+    // if (digitalRead(GPIO_NUM_0) == 0 && prevButton == 1)
+    // {
+
+    //   printf("[DISPLAY] SCREENSHOT\n");   
+      
+    //   lv_obj_t * root = lv_scr_act();
+    //   //lv_obj_t * snapshot_obj = lv_img_create(root);
+    //   lv_img_dsc_t * snapshot; //  = (lv_img_dsc_t *)lv_img_get_src(snapshot_obj);
+    //   lv_color_t pixel_color;
+    //   uint8_t red;
+    //   uint8_t green;
+    //   uint8_t blue;
+
+    //   lv_coord_t w, h;
+      
+    //   snapshot = lv_snapshot_take_to_buf(root, LV_IMG_CF_RGB565);
+    //   if (snapshot == NULL)
+    //   {
+    //     printf("[DISPLAY] Cannot allocate memeory for snapshot\n");
+    //   }
+    //   else
+    //   {
+
+
+      // w = lv_obj_get_width(snapshot);
+      // h = lv_obj_get_height(snapshot);
+
+      // w = snapshot->header.w;
+      // h = snapshot->header.h;
+
+      // printf("[DISPLAY] SCREENSHOT w=%d\n",w);   
+      // printf("[DISPLAY] SCREENSHOT h=%d\n",h);   
+      // }
+
+
+      // for(int x=0; x<snapshot->header.w; x++)
+      // {
+      //   printf("[SHOT] x=%03d: ",x);
+      //   for(int y=0; y<snapshot->header.h; y++)
+      //   {
+      //     pixel_color = lv_img_buf_get_px_color(snapshot, x, y, lv_color_make(0, 0, 0));
+      //     red   = LV_COLOR_GET_R(pixel_color);
+      //     green = LV_COLOR_GET_G(pixel_color);
+      //     blue  = LV_COLOR_GET_B(pixel_color);
+      //     printf(":%d, G:%d, B:%d \n", red, green, blue);
+      //   }
+      //   printf("\n");
+      // }
+    // }
+    prevButton = digitalRead(GPIO_NUM_0);
+
 #endif
 
     // increment backlight to full brightness
