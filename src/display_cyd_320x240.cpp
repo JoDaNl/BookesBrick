@@ -475,17 +475,17 @@ void displayTask(void *arg)
     {
       printf("[DISPLAY] SCREENSHOT\n");   
 
-      ptr = (uint8_t *)disp_drv.draw_buf->buf1;
-      for(int x=0; x<disp_drv.hor_res-1; x++)
-      {
-        printf("[SHOT] x=%03d: ",x);
-        for(int y=0; y<disp_drv.ver_res; y++)
-        {
-          printf("%02X,",*ptr++);
-        }
-        printf("%02X\n",*ptr++);
-      }
-    }
+      // ptr = (uint8_t *)disp_drv.draw_buf->buf1;
+      // for(int x=0; x<disp_drv.hor_res-1; x++)
+      // {
+      //   printf("[SHOT] x=%03d: ",x);
+      //   for(int y=0; y<disp_drv.ver_res; y++)
+      //   {
+      //     printf("%02X,",*ptr++);
+      //   }
+      //   printf("%02X\n",*ptr++);
+      // }
+    // }
 
     // static int prevButton = 1;
     // if (digitalRead(GPIO_NUM_0) == 0 && prevButton == 1)
@@ -522,21 +522,35 @@ void displayTask(void *arg)
       // printf("[DISPLAY] SCREENSHOT h=%d\n",h);   
       // }
 
+      int w, h;
 
-      // for(int x=0; x<snapshot->header.w; x++)
-      // {
-      //   printf("[SHOT] x=%03d: ",x);
-      //   for(int y=0; y<snapshot->header.h; y++)
-      //   {
-      //     pixel_color = lv_img_buf_get_px_color(snapshot, x, y, lv_color_make(0, 0, 0));
-      //     red   = LV_COLOR_GET_R(pixel_color);
-      //     green = LV_COLOR_GET_G(pixel_color);
-      //     blue  = LV_COLOR_GET_B(pixel_color);
-      //     printf(":%d, G:%d, B:%d \n", red, green, blue);
-      //   }
-      //   printf("\n");
-      // }
-    // }
+      lv_obj_t * root = lv_scr_act();
+      w = lv_obj_get_width(root);
+      h = lv_obj_get_height(root);
+      printf("[DISPLAY] SCREENSHOT w=%d\n",w);   
+      printf("[DISPLAY] SCREENSHOT h=%d\n",h);   
+
+      extern lv_disp_drv_t disp_drv;
+      uint16_t * ptr;
+
+      uint16_t pixel;
+      uint8_t red, green ,blue;
+
+      ptr = (uint16_t *)disp_drv.draw_buf->buf1;
+
+      for(int x=0; x<w; x++)
+      {
+        printf("[SHOT] x=%03d: ",x);
+        for(int y=0; y<1; y++)
+        {
+          pixel = (uint16_t)*ptr++;
+          red   = pixel & 0x1F;
+          blue  = (pixel >> 11) & 0x1F;
+          printf("R:%d, G:%d, B:%d \n", red, green, blue);
+        }
+        printf("\n");
+      }
+    }
     prevButton = digitalRead(GPIO_NUM_0);
 
 #endif

@@ -126,7 +126,7 @@ static void sensorsTask(void *arg)
       vTaskDelay(millisForConversion / portTICK_RATE_MS);            
 #ifdef CFG_TEMP_IN_CELCIUS
       tempSens = sensors.getTempCByIndex(0);
-      printf("[SENSORS] getTempCByIndex(0)=%f\n",tempSens);
+      // printf("[SENSORS] getTempCByIndex(0)=%f2.1\n",tempSens);
       tempError = (tempSens == DEVICE_DISCONNECTED_C);
 #elif CFG_TEMP_IN_FARENHEID
       temperature = sensors.getTempFByIndex(0);
@@ -152,15 +152,7 @@ static void sensorsTask(void *arg)
       }
     }
 
-    // TODO : add optional power cycle
-
-    // reset 1-wire bus
-    // vTaskDelay(500 / portTICK_RATE_MS);
-    // oneWire.reset();
-    // vTaskDelay(500 / portTICK_RATE_MS);
-    // vTaskDelay(500 / portTICK_RATE_MS);
-    // sensors.begin();
-    // vTaskDelay(500 / portTICK_RATE_MS);
+    // TODO : add optional power cycle in case of sensor errors
 
     // Always send temperature + valid-flag to controller-queue
     qControllerMesg.type = e_mtype_sensor;

@@ -385,8 +385,8 @@ static void startWifi()
   printf("[CONFIG]     SSID=<%s>\n", config.SSID.c_str());
   printf("[CONFIG]   passwd=<%s>\n", config.passwd.c_str());
 
-  WiFi.mode(WIFI_STA);
   WiFi.setHostname(config.hostname.c_str());
+  WiFi.mode(WIFI_STA);
   WiFi.begin(config.SSID, config.passwd);
 
   vTaskDelay(1000 / portTICK_RATE_MS);
@@ -448,6 +448,7 @@ static void wifiCheckTask(void *arg)
       if (WiFi.status() != WL_CONNECTED)
       {
         printf("[CONFIG] Reconnecting to WiFi...\n");
+        WiFi.disconnect();
         WiFi.reconnect();
       }
 
