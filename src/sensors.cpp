@@ -89,7 +89,10 @@ static void sensorsTask(void *arg)
     // If sensor(s) not initialised yet, or there is a sensor error --> Initialise sensor
     if (numSensors == 0 || tempError)
     {
-      printf("[SENSORS] TEMPERATURE NOT OPENED OR SENSOR ERROR !!!\n");
+      if (tempError)
+      {
+        printf("[SENSORS] TEMPERATURE SENSOR ERROR !!!\n");
+      }
 #if (CFG_TEMP_SENSOR_SIMULATION == false)
       
       // oneWire.depower();

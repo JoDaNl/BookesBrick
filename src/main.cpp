@@ -48,6 +48,8 @@ void setup()
   ESP_LOGI(LOG_TAG,"========================");
 
 
+  // pinMode(GPIO_NUM_7, OUTPUT);
+
 #if (CFG_COMM_WM_USE_PIN == true)
   // check config button state at power-up
   config.inConfigMode = checkBootConfigMode();

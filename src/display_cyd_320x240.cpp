@@ -274,7 +274,17 @@ void displayTask(void *arg)
             }
           }
 
-          // printf("[DISPLAY] Graph scale: min=%d, max=%d\n", y_min, y_max);
+          // If y_min & y_max are value-wise close to each other the graph's y-axis may display
+          // the same label 2 or 3 times.
+          // assure the veritical axis covers a minumum of 3 degrees
+          // note values are * 10
+          if ( (y_max - y_min) < 30)
+          {
+            y_max = y_max + 15;
+            y_min = y_min - 15;
+          }
+          
+          printf("[DISPLAY] Graph scale: min=%d, max=%d\n", y_min, y_max);
           lv_chart_set_range(ui_temperatureChart, LV_CHART_AXIS_PRIMARY_Y, y_min, y_max);
         }
         break;
@@ -521,6 +531,7 @@ void displayTask(void *arg)
       // printf("[DISPLAY] SCREENSHOT w=%d\n",w);   
       // printf("[DISPLAY] SCREENSHOT h=%d\n",h);   
       // }
+
 
       int w, h;
 
