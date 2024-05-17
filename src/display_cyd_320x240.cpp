@@ -284,7 +284,7 @@ void displayTask(void *arg)
             y_min = y_min - 15;
           }
           
-          printf("[DISPLAY] Graph scale: min=%d, max=%d\n", y_min, y_max);
+          // printf("[DISPLAY] Graph scale: min=%d, max=%d\n", y_min, y_max);
           lv_chart_set_range(ui_temperatureChart, LV_CHART_AXIS_PRIMARY_Y, y_min, y_max);
         }
         break;

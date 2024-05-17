@@ -22,8 +22,16 @@ static void setActuator(uint8_t number, uint8_t onOff)
   if (pinModeNotSet)
   {
     pinModeNotSet = false;
-    pinMode(CFG_RELAY0_PIN, CFG_RELAY0_OUTPUT_TYPE);
-    pinMode(CFG_RELAY1_PIN, CFG_RELAY1_OUTPUT_TYPE);
+
+    if (CFG_RELAY0_PIN > 0)
+    {
+      pinMode(CFG_RELAY0_PIN, CFG_RELAY0_OUTPUT_TYPE);
+    }
+
+    if (CFG_RELAY1_PIN > 0)
+    {
+      pinMode(CFG_RELAY1_PIN, CFG_RELAY1_OUTPUT_TYPE);
+    }
   }
 
   valid = false;
@@ -48,7 +56,7 @@ static void setActuator(uint8_t number, uint8_t onOff)
     onLevel = !onLevel;
   }
 
-  if (valid)
+  if (valid && (pin > 0))
   {
     digitalWrite(pin, onLevel);
     printf("[ACTUATORS] digitalWrite(%d, %d)\n",pin, onLevel);    

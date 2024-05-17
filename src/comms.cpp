@@ -6,7 +6,10 @@
 #include <Arduino.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
+
+#if (CFG_DISPLAY_TIME==true)
 #include <ESP32Time.h>
+#endif
 #include <preferences.h>
 
 #include "controller.h"
@@ -39,8 +42,10 @@ static uint8_t actuators = 0;
 static bool actuatorsValid;
 
 // TIME / RTC
+#if (CFG_DISPLAY_TIME==true)
 static ESP32Time rtc; 
 static bool rtcValid;
+#endif
 
 // ============================================================================
 // CALL IOT API: SEND TEMPERATURE TO BACKEND AND GET NEW ACTUATOR VALUES
@@ -200,6 +205,7 @@ static void initPROAPIFilterDocs(void)
 // - return value is next API-request (in sec)
 // ============================================================================
 
+#if (CFG_DISPLAY_NONE==false)
 static uint16_t callBierBotPROAPI(void)
 {
   static int getResponse;
@@ -274,8 +280,9 @@ static uint16_t callBierBotPROAPI(void)
 
   return (CFG_COMM_PROAPI_INTERVAL);
 }
+#endif
 
-
+#if (CFG_DISPLAY_TIME==true)
 static uint16_t getNetworkTime(void)
 {
   const char *getExternIPURL = "https://api.ipify.org/?format=json";
@@ -379,6 +386,7 @@ static uint16_t getNetworkTime(void)
 
   return (interval);
 }
+#endif
 
 // ============================================================================
 // COMMUNICATION TASK
@@ -441,6 +449,7 @@ static void communicationTask(void *arg)
       }
     }
 
+#if (CFG_DISPLAY_NONE==false)
     //  only call PRO API if 'udedForDevices' is valid
     if (usedForDevicesValid)
     {
@@ -456,7 +465,9 @@ static void communicationTask(void *arg)
         // nextPROAPIRequestSec = 60;
       }
     }
+#endif
 
+#if (CFG_DISPLAY_TIME==true)
     if (WiFi.status() == WL_CONNECTED)
     {
       if (nextTimeRequestSec > 0)
@@ -478,8 +489,7 @@ static void communicationTask(void *arg)
     controllerMesg.valid = rtcValid;
     controllerMesg.mesg.timeMesg.data = ((rtc.getHour(hours24Mode) & 0xFF) << 8) | (rtc.getMinute() & 0xFF);
     controllerQueueSend(&controllerMesg, 0);
-
-    // printf("[COMMS] rtc.hour=%d, rtc.minute=%d\n", rtc.getHour(hours24Mode), rtc.getMinute());
+#endif
 
     // TODO : improve heartbeat...i.e. if backend silences the controller should know
     controllerMesg.type = e_mtype_backend;
