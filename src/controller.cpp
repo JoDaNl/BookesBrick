@@ -36,7 +36,8 @@ void controllerTask(void *arg)
   static actuatorQueueItem_t  actuatorsQMesg; // TODO : rename type/align with others
   static displayQueueItem_t   displayQMesg;
 
-  static uint8_t prevActuators = 0;
+  static uint8_t actuators = 0;
+  static uint16_t compDelay = 0;
 
   if (config.inConfigMode)
   {
@@ -51,6 +52,13 @@ void controllerTask(void *arg)
     blinkLedQMesg.offTimeMs = 1500;
   }
   blinkLedQueueSend(&blinkLedQMesg , 0);
+
+
+#ifdef BOARD_HAS_RGB_LED
+  pinMode(RGB_LED_R, OUTPUT);
+  pinMode(RGB_LED_G, OUTPUT);
+  pinMode(RGB_LED_B, OUTPUT);
+#endif
 
 
   while (true)
@@ -114,9 +122,9 @@ void controllerTask(void *arg)
               printf("[CONTROLLER] 1 received e_msg_backend_actuators, data=%d\n", qMesgRecv.mesg.backendMesg.data);
               
               // send actuators/relay state to actuators tasks
-              if (qMesgRecv.mesg.backendMesg.data != prevActuators)
+              if (qMesgRecv.mesg.backendMesg.data != actuators)
               {
-                prevActuators = qMesgRecv.mesg.backendMesg.data;
+                actuators = qMesgRecv.mesg.backendMesg.data;
                 actuatorsQMesg.data = qMesgRecv.mesg.backendMesg.data;
                 actuatorsQueueSend(&actuatorsQMesg, 0);
               }
@@ -139,6 +147,8 @@ void controllerTask(void *arg)
               displayQMesg.data.compDelay = qMesgRecv.mesg.backendMesg.data;
               displayQMesg.valid          = true; 
               displayQueueSend(&displayQMesg , 0);
+
+              compDelay = qMesgRecv.mesg.backendMesg.data;
               break;
 
             case e_msg_backend_heartbeat:
@@ -224,8 +234,31 @@ void controllerTask(void *arg)
     //   displayQMesg.data.heartOn = false;
     //   displayQueueSend(&displayQMesg , 0);
     // }
+    
+    
+#ifdef BOARD_HAS_RGB_LED
+    switch (actuators)
+    {
+      case 1: // COOL -> BLUE
+        digitalWrite(RGB_LED_R, 1);
+        digitalWrite(RGB_LED_G, 1);
+        digitalWrite(RGB_LED_B, compDelay & 1);
+        break;
+      case 2: // HEAT --> RED
+        digitalWrite(RGB_LED_R, 0);
+        digitalWrite(RGB_LED_G, 1);
+        digitalWrite(RGB_LED_B, 1);
+        break;
+      default: // OTHERS --> OFF
+        digitalWrite(RGB_LED_G, 1);
+        digitalWrite(RGB_LED_G, 1);
+        digitalWrite(RGB_LED_B, 1);
+        break;
+    }
+#endif
 
   }
+
 };
 
 // wrapper for sendQueue 

@@ -12,6 +12,7 @@
 
 #define LOG_TAG "display"
 
+
 typedef enum
 {
   TEMP_SERIE,
@@ -39,6 +40,7 @@ static void cb_chart_draw_event(lv_event_t *e)
 
   dsc = lv_event_get_draw_part_dsc(e);
 
+  // Customize chart series
   if ((dsc->part == LV_PART_ITEMS) && (dsc->p1 != NULL) && (dsc->p2 != NULL))
   {
     // get current serie
@@ -69,7 +71,22 @@ static void cb_chart_draw_event(lv_event_t *e)
       lv_draw_mask_remove_id(line_mask_id);
     }
   }
+
+  // Customize labels of Y-axes...i.e. divide graph values by 10 (graph does not handle floats)
+  if (dsc->part == LV_PART_TICKS)
+  {
+    lv_snprintf(dsc->text, sizeof(dsc->text), "%d", dsc->value/10);
+  }
+
 }
+
+void cb_clicked(lv_event_t * e)
+{
+  lv_event_code_t code = lv_event_get_code(e);
+  lv_obj_t *btn = lv_event_get_target(e);
+  printf("*\n");
+}
+
 
 static void displayTemperature(float temperature, bool valid, lv_obj_t *temperatureLabel, lv_obj_t *temperatureLabelSmall, float lowRange, float highRange)
 {
@@ -118,14 +135,13 @@ void initDisplay_cyd_320x240(void)
   // init TFT display & LVGL
   ESP_LOGI(LOG_TAG, "void initDisplay_cyd_320x240");
 
-  smartdisplay_lcd_set_backlight(0.0f);
   smartdisplay_init();
+  smartdisplay_lcd_set_backlight(0.0f);
 
   auto disp = lv_disp_get_default();
   lv_disp_set_rotation(disp, LV_DISP_ROT_270);
   ui_init();
   lv_disp_load_scr(ui_mainScreen);
-  smartdisplay_lcd_set_backlight(1.0f);
 }
 
 // ============================================================================
@@ -159,7 +175,10 @@ void displayTask(void *arg)
 
   static String deviceName;
 
-  lv_label_set_text(ui_testLabel, LV_SYMBOL_SETTINGS LV_SYMBOL_OK);
+  static float lcdBacklight = 0.0;
+
+
+  // lv_label_set_text(ui_testLabel, LV_SYMBOL_SETTINGS LV_SYMBOL_OK);
 
   ui_setp_serie = lv_chart_add_series(ui_temperatureChart, lv_color_hex(0x808080), LV_CHART_AXIS_PRIMARY_Y);
   ui_temp_serie = lv_chart_add_series(ui_temperatureChart, lv_color_hex(0x101010), LV_CHART_AXIS_PRIMARY_Y);
@@ -187,13 +206,16 @@ void displayTask(void *arg)
         // Update graph
         if (qMesg.valid)
         {
-          temp_value = qMesg.data.temperature / 10.0;
-          setp_value = setPointx10Valid ? setPointx10 / 10.0 : LV_CHART_POINT_NONE;
+          // both temp & set-point are  * 10
+          temp_value = qMesg.data.temperature;
+          setp_value = setPointx10Valid ? setPointx10 : LV_CHART_POINT_NONE;
+          // temp_value = qMesg.data.temperature / 10.0;
+          // setp_value = setPointx10Valid ? setPointx10 / 10.0 : LV_CHART_POINT_NONE;
 
           if (actuator0 == 1)
           {
             // Y-value is >1 so serie-line will be outside of visible area of graph !
-            lv_chart_set_next_value(ui_temperatureChart, ui_cool_serie, 2);
+            lv_chart_set_next_value(ui_temperatureChart, ui_cool_serie, 2*10);
           }
           else
           {
@@ -203,7 +225,7 @@ void displayTask(void *arg)
           if (actuator1 == 1)
           {
             // Y-value is >1 so serie-line will be outside of visible area of graph !
-            lv_chart_set_next_value(ui_temperatureChart, ui_heat_serie, 2);
+            lv_chart_set_next_value(ui_temperatureChart, ui_heat_serie, 2*10);
           }
           else
           {
@@ -224,8 +246,8 @@ void displayTask(void *arg)
           if (setPointx10Valid)
           {
             // init min/max with setPoint, so target-temp will always be in view of graph
-            y_min = setPointx10 / 10;
-            y_max = setPointx10 / 10;
+            y_min = setPointx10;
+            y_max = setPointx10;
           }
           else
           {
@@ -234,7 +256,7 @@ void displayTask(void *arg)
             y_max = *y_array;
           }
 
-          // loop from FIRSt to last data-point. Also works if we have only 1 datapoint.
+          // loop from FIRST to last data-point. Also works if we have only 1 datapoint.
           for (uint16_t i = 0; i < y_count; i++)
           {
             if (*y_array != LV_CHART_POINT_NONE)
@@ -252,6 +274,16 @@ void displayTask(void *arg)
             }
           }
 
+          // If y_min & y_max are value-wise close to each other the graph's y-axis may display
+          // the same label 2 or 3 times.
+          // assure the veritical axis covers a minumum of 3 degrees
+          // note values are * 10
+          if ( (y_max - y_min) < 30)
+          {
+            y_max = y_max + 15;
+            y_min = y_min - 15;
+          }
+          
           // printf("[DISPLAY] Graph scale: min=%d, max=%d\n", y_min, y_max);
           lv_chart_set_range(ui_temperatureChart, LV_CHART_AXIS_PRIMARY_Y, y_min, y_max);
         }
@@ -324,7 +356,7 @@ void displayTask(void *arg)
         if (qMesg.number == 0)
         {
           compDelayPerc = 100 - (100 * qMesg.data.compDelay) / CFG_RELAY0_ON_DELAY;
-          printf("[DISPLAY] compressor-delay=%d sec, %d /%\n",qMesg.data.compDelay,compDelayPerc);
+          // printf("[DISPLAY] compressor-delay=%d sec, %d\%\n",qMesg.data.compDelay,compDelayPerc);
           lv_bar_set_value(ui_coolBar, compDelayPerc, LV_ANIM_OFF);
         }
         break;
@@ -442,9 +474,110 @@ void displayTask(void *arg)
 
     // Update LVGL-GUI
     lv_timer_handler();
+    
+#if (CFG_ENABLE_SCREENSHOT == true)
+    static int prevButton = 1;
+    extern lv_disp_drv_t disp_drv;
+    uint8_t * ptr;
+
+    // GPIO_NUM_0 == BOOT button 
+    if (digitalRead(GPIO_NUM_0) == 0 && prevButton == 1)
+    {
+      printf("[DISPLAY] SCREENSHOT\n");   
+
+      // ptr = (uint8_t *)disp_drv.draw_buf->buf1;
+      // for(int x=0; x<disp_drv.hor_res-1; x++)
+      // {
+      //   printf("[SHOT] x=%03d: ",x);
+      //   for(int y=0; y<disp_drv.ver_res; y++)
+      //   {
+      //     printf("%02X,",*ptr++);
+      //   }
+      //   printf("%02X\n",*ptr++);
+      // }
+    // }
+
+    // static int prevButton = 1;
+    // if (digitalRead(GPIO_NUM_0) == 0 && prevButton == 1)
+    // {
+
+    //   printf("[DISPLAY] SCREENSHOT\n");   
+      
+    //   lv_obj_t * root = lv_scr_act();
+    //   //lv_obj_t * snapshot_obj = lv_img_create(root);
+    //   lv_img_dsc_t * snapshot; //  = (lv_img_dsc_t *)lv_img_get_src(snapshot_obj);
+    //   lv_color_t pixel_color;
+    //   uint8_t red;
+    //   uint8_t green;
+    //   uint8_t blue;
+
+    //   lv_coord_t w, h;
+      
+    //   snapshot = lv_snapshot_take_to_buf(root, LV_IMG_CF_RGB565);
+    //   if (snapshot == NULL)
+    //   {
+    //     printf("[DISPLAY] Cannot allocate memeory for snapshot\n");
+    //   }
+    //   else
+    //   {
+
+
+      // w = lv_obj_get_width(snapshot);
+      // h = lv_obj_get_height(snapshot);
+
+      // w = snapshot->header.w;
+      // h = snapshot->header.h;
+
+      // printf("[DISPLAY] SCREENSHOT w=%d\n",w);   
+      // printf("[DISPLAY] SCREENSHOT h=%d\n",h);   
+      // }
+
+
+      int w, h;
+
+      lv_obj_t * root = lv_scr_act();
+      w = lv_obj_get_width(root);
+      h = lv_obj_get_height(root);
+      printf("[DISPLAY] SCREENSHOT w=%d\n",w);   
+      printf("[DISPLAY] SCREENSHOT h=%d\n",h);   
+
+      extern lv_disp_drv_t disp_drv;
+      uint16_t * ptr;
+
+      uint16_t pixel;
+      uint8_t red, green ,blue;
+
+      ptr = (uint16_t *)disp_drv.draw_buf->buf1;
+
+      for(int x=0; x<w; x++)
+      {
+        printf("[SHOT] x=%03d: ",x);
+        for(int y=0; y<1; y++)
+        {
+          pixel = (uint16_t)*ptr++;
+          red   = pixel & 0x1F;
+          blue  = (pixel >> 11) & 0x1F;
+          printf("R:%d, G:%d, B:%d \n", red, green, blue);
+        }
+        printf("\n");
+      }
+    }
+    prevButton = digitalRead(GPIO_NUM_0);
+
+#endif
+
+    // increment backlight to full brightness
+    // this is done after (1st) invocation of lv_imer_handler() to make
+    // sure display buffer has valid content and no random pixels (after power-up)
+    if (lcdBacklight < 1.0)
+    {     
+      lcdBacklight += 0.02;
+      smartdisplay_lcd_set_backlight(lcdBacklight);
+    }
+
   }
 };
 
 #endif
 
-// end of file
+// end of file;

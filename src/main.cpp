@@ -48,6 +48,8 @@ void setup()
   ESP_LOGI(LOG_TAG,"========================");
 
 
+  // pinMode(GPIO_NUM_7, OUTPUT);
+
 #if (CFG_COMM_WM_USE_PIN == true)
   // check config button state at power-up
   config.inConfigMode = checkBootConfigMode();
@@ -79,6 +81,17 @@ void setup()
     //   initMonitor();
     //   delay(10);
   }
+
+  // int p=0;
+
+  // pinMode(GPIO_NUM_16, OUTPUT);
+
+  // while(true)
+  // {
+  //   digitalWrite(GPIO_NUM_16,p);
+  //   p = ~p;
+  //   vTaskDelay(100 / portTICK_RATE_MS);
+  // }
 
 };
 

@@ -9,10 +9,13 @@
 
 //=============================================
 
-#define CFG_TEMP_SENSOR_SIMULATION      true
-#define CFG_TEMP_PIN                    GPIO_NUM_16  // Green led on CYD
+#define CFG_TEMP_SENSOR_SIMULATION      false
+#define CFG_TEMP_PIN                    GPIO_NUM_10  // 16 = Green led on CYD
 #define CFG_TEMP_IN_CELCIUS             true
 //#define CFG_TEMP_IN_FARENHEID          true
+#define CFG_TEMP_SMOOTH_SAMPLES         7             // must be odd number
+#define CFG_TEMP_MAX_DEVIATIONB         10            // 1 degree * 10
+#define CFG_TEMP_DS18B20_CHECK_COUNTERFEIT   true
 
 //=============================================
 
@@ -21,14 +24,16 @@
 //=============================================
 
 // Relay outputs
-#define CFG_RELAY0_PIN                  GPIO_NUM_17
+//#define CFG_RELAY0_PIN                  GPIO_NUM_17
+#define CFG_RELAY0_PIN                  0     // 0 = no relay
 #define CFG_RELAY0_ON_LEVEL             0
 #define CFG_RELAY0_OUTPUT_TYPE          OUTPUT_OPEN_DRAIN     // or OUTPUT
 #define CFG_RELAY0_ON_DELAY             200                   // compressor-delay in seconds
 #define CFG_RELAY0_OFF_DELAY            0
 #define CFG_RELAY0_LABEL                "Cool"
 
-#define CFG_RELAY1_PIN                  GPIO_NUM_4
+// #define CFG_RELAY1_PIN                  GPIO_NUM_4
+#define CFG_RELAY1_PIN                  0      // 0 = no relay
 #define CFG_RELAY1_ON_LEVEL             0
 #define CFG_RELAY1_OUTPUT_TYPE          OUTPUT_OPEN_DRAIN
 #define CFG_RELAY1_ON_DELAY             0
@@ -56,7 +61,7 @@
 #define CFG_COMM_DEVICE_VERSION         "0.2" 
 #define CFG_COMM_PROAPI_INTERVAL        60  // query PRO-API every n seconds
 
-#define CFG_COMM_NTPREQUEST_INTERVAL    60
+#define CFG_COMM_TIMEREQUEST_INTERVAL   60
 
 #define CFG_COMM_WM_DEBUG               true
 #define cfg_COMM_WM_RESET_SETTINGS      false // TODO: CHECK
@@ -64,6 +69,8 @@
 #define CFG_COMM_WM_USE_PIN             false
 #define CFG_COMM_WM_PORTAL_PIN          GPIO_NUM_4
 #define CFG_COMM_HOSTNAME               "bookesbrick"
+
+#define CFG_ENABLE_SCREENSHOT           true
 
 //=============================================
 

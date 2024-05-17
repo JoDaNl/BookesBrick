@@ -240,7 +240,7 @@ void displayTask(void *arg)
         actuators         = qMesg.data.actuators;
         break;
       case e_heartbeat:
-        heart             = qMesg.data.heartOn;
+        heart             = qMesg.data.heartBeat;
         break;
       case e_delay:
         cdelay            = qMesg.data.compDelay;
