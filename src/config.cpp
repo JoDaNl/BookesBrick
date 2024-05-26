@@ -395,7 +395,7 @@ static void startWifi()
   {
     printf(".");
     WiFi.reconnect();
-    vTaskDelay(100 / portTICK_RATE_MS);
+    vTaskDelay(1000 / portTICK_RATE_MS);
   }
   printf("\n\n");
 
