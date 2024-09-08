@@ -1,10 +1,10 @@
 /*******************************************************************************
  * Size: 50 px
  * Bpp: 8
- * Opts: --bpp 8 --size 50 --font D:\cs\jos\Documents\_Brouwerij\Automatisering\PlatformIO\BrewScale-LVGL\squareline\assets\digital-7 (mono italic).ttf -o D:\cs\jos\Documents\_Brouwerij\Automatisering\PlatformIO\BrewScale-LVGL\squareline\assets\ui_font_weight50Font.c --format lvgl --symbols +-.0123456789HILO --no-compress --no-prefilter
+ * Opts: --bpp 8 --size 50 --font D:/cs/jos/Documents/_Brouwerij/Automatisering/github/BookesBrick/squareline/ui_320x240/assets/fonts/digital-7 (mono italic).ttf -o D:/cs/jos/Documents/_Brouwerij/Automatisering/github/BookesBrick/squareline/ui_320x240/assets/fonts\ui_font_weight50Font.c --format lvgl --symbols +-.0123456789HILO --no-compress --no-prefilter
  ******************************************************************************/
 
-#include "../ui.h"
+#include "ui.h"
 
 #ifndef UI_FONT_WEIGHT50FONT
 #define UI_FONT_WEIGHT50FONT 1

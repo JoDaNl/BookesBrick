@@ -16,16 +16,14 @@
 
 #define LOG_TAG "main"
 
-
-// Taken from arduino-esp main.cpp
-// #ifndef ARDUINO_LOOP_STACK_SIZE
-// #ifndef CONFIG_ARDUINO_LOOP_STACK_SIZE
-// #define ARDUINO_LOOP_STACK_SIZE 8192
-// #else
-// #define ARDUINO_LOOP_STACK_SIZE CONFIG_ARDUINO_LOOP_STACK_SIZE
-// #endif
-// #endif
-
+// General TODO-list
+// - go into condig mode when there is no SSID/PWD stored in filesystem
+// - when file-system cannot be openened show message/go in to FATAL-mode
+// - Add mode into GUI status bar (mode=ONLINE/LOCAL/ERROR/FATAL/CONFIG)
+// - Add method (button/GUI/DRD) to enter config mode
+// - Add support for NTC sensors, using (external) ADC
+// - FIX: When tempsensor reads no value the graph will contine to draw last valid temperature...it should dislay not temperature for those measurements
+// - Add way to set the update frequency of the temperature graph
 
 // ============================================================================
 // SETUP
@@ -34,19 +32,21 @@
 void setup()
 {
   // Immediately set outputs/actuators to non-active
+  // this to prevent unwatend heating/cooling after a reboot
   powerUpActuators();
 
-  Serial.begin(115200);
+  Serial.begin(CFG_BAUDRATE);
 
-  // while (!Serial) ;   // wait for Serial to become available
-  delay(100);
+  while (!Serial) // wait for Serial to become available
+  {
+    delay(100);
+  }
 
   // Welcome message
-  ESP_LOGI(LOG_TAG,"");
-  ESP_LOGI(LOG_TAG,"========================");
-  ESP_LOGI(LOG_TAG,"[MAIN] Started !!!\n");
-  ESP_LOGI(LOG_TAG,"========================");
-
+  ESP_LOGI(LOG_TAG, "");
+  ESP_LOGI(LOG_TAG, "========================");
+  ESP_LOGI(LOG_TAG, "[MAIN] Started !!!\n");
+  ESP_LOGI(LOG_TAG, "========================");
 
   // pinMode(GPIO_NUM_7, OUTPUT);
 
@@ -55,7 +55,7 @@ void setup()
   config.inConfigMode = checkBootConfigMode();
 #endif
 
-  // config.inConfigMode = true;
+  config.inConfigMode = false;
 
   // Start all tasks
 
@@ -63,11 +63,10 @@ void setup()
   delay(10);
   initDisplay();
   delay(10);
-
-  initController();
-  delay(100);
-
   initWiFi(config.inConfigMode);
+  delay(10);
+  initController();
+  delay(10);
 
   if (~config.inConfigMode)
   {
@@ -78,27 +77,16 @@ void setup()
     delay(10);
     initActuators();
     delay(10);
-    //   initMonitor();
-    //   delay(10);
+    initMonitor();
+    delay(10);
   }
 
-  // int p=0;
-
-  // pinMode(GPIO_NUM_16, OUTPUT);
-
-  // while(true)
-  // {
-  //   digitalWrite(GPIO_NUM_16,p);
-  //   p = ~p;
-  //   vTaskDelay(100 / portTICK_RATE_MS);
-  // }
-
+  // terminate standard 'Arduino' task
+  vTaskDelete(NULL);
 };
 
-void loop()
-{
-  // just a very long wait-time, as Arduino-style loop is not used
-  vTaskDelay(3600000 / portTICK_RATE_MS);
+void loop() {
+  // empty task loop
 };
 
 // end of file

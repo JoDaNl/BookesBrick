@@ -4,6 +4,13 @@
 
 #include "config.h"
 #include <Arduino.h>
+
+#if (CFG_RELAY_TYPE_IOEXP == true)
+#include <Wire.h>
+#include <TCA9555.h>
+TCA9555 TCA(0x20);
+#endif
+
 #include "actuators.h"
 #include "controller.h"
 
@@ -23,6 +30,7 @@ static void setActuator(uint8_t number, uint8_t onOff)
   {
     pinModeNotSet = false;
 
+#if (CFG_RELAY_TYPE_GPIO == true)
     if (CFG_RELAY0_PIN > 0)
     {
       pinMode(CFG_RELAY0_PIN, CFG_RELAY0_OUTPUT_TYPE);
@@ -32,6 +40,22 @@ static void setActuator(uint8_t number, uint8_t onOff)
     {
       pinMode(CFG_RELAY1_PIN, CFG_RELAY1_OUTPUT_TYPE);
     }
+#endif
+
+#if (CFG_RELAY_TYPE_IOEXP == true)
+    Wire.begin(CFG_I2C_SDA, CFG_I2C_SCL);
+    Wire.setClock(50000);
+
+    printf("BEGIN=%d\n",TCA.begin());
+
+    // TODO : check TCA result & send error message in case no IO-expander is detected
+
+    // set pin-modes and switch relay's off
+    TCA.pinMode1(CFG_RELAY0_PIN, OUTPUT);
+    TCA.write1(CFG_RELAY0_PIN, !CFG_RELAY0_ON_LEVEL);
+    TCA.pinMode1(CFG_RELAY1_PIN, OUTPUT);
+    TCA.write1(CFG_RELAY1_PIN, !CFG_RELAY1_ON_LEVEL);
+#endif
   }
 
   valid = false;
@@ -56,10 +80,18 @@ static void setActuator(uint8_t number, uint8_t onOff)
     onLevel = !onLevel;
   }
 
-  if (valid && (pin > 0))
+  if (valid)
   {
-    digitalWrite(pin, onLevel);
-    printf("[ACTUATORS] digitalWrite(%d, %d)\n",pin, onLevel);    
+#if (CFG_RELAY_TYPE_GPIO == true)
+    if (pin > 0)
+    {
+      digitalWrite(pin, onLevel);
+    }
+#endif    
+#if (CFG_RELAY_TYPE_IOEXP == true)
+    TCA.write1(pin, onLevel); 
+#endif
+    printf("[ACTS] digitalWrite(%d, %d)\n",pin, onLevel);    
     ESP_LOGI(LOG_TAG,"digitalWrite(%d, %d)",pin, onLevel);
   }
 }
@@ -110,7 +142,7 @@ static void actuatorsTask(void *arg)
     // get message from queue
     if (xQueueReceive(actuatorsQueue, &actuatorMesg, 1000 / portTICK_RATE_MS) == pdTRUE)
     {
-      // printf("[ACTUATORS] received qMesg.data=%d\n", actuatorMesg.data);
+      printf("[ACTS] received qMesg.data=%d\n", actuatorMesg.data);
       ESP_LOGI(LOG_TAG,"received qMesg.data=%d", actuatorMesg.data);
       actuatorReqeuest0 = actuatorMesg.data & 1;
       actuatorReqeuest1 = (actuatorMesg.data >> 1) & 1;
@@ -139,7 +171,7 @@ static void actuatorsTask(void *arg)
     // switch on if onDelay is not counting
     if (actuatorReqeuest0 && !actuatorActual0 && (onDelaySec0 == 0))
     {
-      // printf("[ACTUATORS] RELAY0 ON !!!\n");
+      // printf("[ACTS] RELAY0 ON !!!\n");
       ESP_LOGI(LOG_TAG,"RELAY0 ON !!!");
       setActuator(0, 1);
       actuatorActual0 = 1;
@@ -170,7 +202,7 @@ static void actuatorsTask(void *arg)
     // switch off if offDelay is not counting
     if (!actuatorReqeuest0 && actuatorActual0 && (offDelaySec0 == 0))
     {
-      // printf("[ACTUATORS] RELAY0 OFF !!!\n");
+      // printf("[ACTS] RELAY0 OFF !!!\n");
       ESP_LOGI(LOG_TAG,"RELAY0 OFF !!!");
       setActuator(0, 0);
       actuatorActual0 = 0;
@@ -184,12 +216,6 @@ static void actuatorsTask(void *arg)
         offDelaySec0--;
       }
     }
-
-    // if (( onDelaySec0 > 0) || (offDelaySec0 > 0) )
-    // {
-    //    printf("[ACTUATORS] onDelaySec0=%d - offDelaySec0=%d\n", onDelaySec0, offDelaySec0);
-    // }
-
 
 
     // ACTUATOR 1 - Switch ON request
@@ -206,7 +232,7 @@ static void actuatorsTask(void *arg)
     // switch on if onDelay is not counting
     if (actuatorReqeuest1 && !actuatorActual1 && (onDelaySec1 == 0))
     {
-      // printf("[ACTUATORS] RELAY1 ON !!!\n");
+      // printf("[ACTS] RELAY1 ON !!!\n");
       ESP_LOGI(LOG_TAG,"RELAY1 ON !!!");
       setActuator(1, 1);
       actuatorActual1 = 1;
@@ -237,7 +263,7 @@ static void actuatorsTask(void *arg)
     // switch off if offDelay is not counting
     if (!actuatorReqeuest1 && actuatorActual1 && (offDelaySec1 == 0))
     {
-      // printf("[ACTUATORS] RELAY1 OFF !!!\n");
+      // printf("[ACTS] RELAY1 OFF !!!\n");
       ESP_LOGI(LOG_TAG,"RELAY1 OFF !!!");
       setActuator(1, 0);
       actuatorActual1 = 0;
@@ -251,11 +277,6 @@ static void actuatorsTask(void *arg)
         offDelaySec1--;
       }
     }
-
-    // if (( onDelaySec1 > 0) || (offDelaySec1 > 0) )
-    // {
-    //   printf("[ACTUATORS] onDelaySec1=%d - offDelaySec1=%d\n", onDelaySec1, offDelaySec1);
-    // }
 
   }
 };
@@ -282,19 +303,19 @@ void initActuators(void)
 {
   static TaskHandle_t actuatorsTaskHandle = NULL;
 
-  // printf("[ACTUATORS] init\n");
+  // printf("[ACTS] init\n");
   ESP_LOGI(LOG_TAG,"initActuators()");
 
   actuatorsQueue = xQueueCreate(5, sizeof(actuatorQueueItem_t));
 
   if (actuatorsQueue == 0)
   {
-    // printf("[ACTUATORS] Cannot create actuatorsQueue. This is FATAL\n");
+    // printf("[ACTS] Cannot create actuatorsQueue. This is FATAL\n");
     ESP_LOGE(LOG_TAG,"Cannot create actuatorsQueue. This is FATAL");
   }
 
   // create task
-  xTaskCreate(actuatorsTask, "actuatorsTask", 4 * 1024, NULL, 10, &actuatorsTaskHandle);
+  xTaskCreatePinnedToCore(actuatorsTask, "actuatorsTask", 4 * 1024, NULL, 10, &actuatorsTaskHandle, 1);
 }
 
 // end of file

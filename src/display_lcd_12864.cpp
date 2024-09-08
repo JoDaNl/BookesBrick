@@ -158,7 +158,7 @@ static void displayRender(void)
     {
       bars++;
     }
-    // printf("[DISPLAY] rssi=%d bars=%d\n",rssi, bars);
+    // printf("[DISP] rssi=%d bars=%d\n",rssi, bars);
 
     for(int i=0; i<7; i++)
     {
@@ -182,7 +182,7 @@ static void displayRender(void)
   {
     char strDelay[16];
     sprintf(strDelay,"comp delay %d", cdelay);
-    // printf("[DISPLAY] delay=%s\n",strDelay);
+    // printf("[DISP] delay=%s\n",strDelay);
     u8g2.setFont(u8g2_font_6x10_tf);
     u8g2.drawStr(5, 52, strDelay);
   }
@@ -216,7 +216,7 @@ void displayTask(void *arg)
   {
    if (xQueueReceive(displayQueue, &qMesg, DELAY / portTICK_RATE_MS) == pdTRUE)
     {
-      // printf("[DISPLAY] received qMesg.type=%d\n", qMesg.type);
+      // printf("[DISP] received qMesg.type=%d\n", qMesg.type);
 
       doRender          = true;
 

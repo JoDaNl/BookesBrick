@@ -75,18 +75,18 @@ void displayTask(void *arg)
   {
     if (xQueueReceive(displayQueue, &qMesg, msToWait) == pdTRUE)
     {
-      // printf("[DISPLAY] received qMesg.type=%d - ",qMesg.type);
+      // printf("[DISP] received qMesg.type=%d - ",qMesg.type);
 
       switch (qMesg.type)
       {
       case e_temperature:
-        // printf("[DISPLAY] %2.1f\n",qMesg.data.temperature / 10.0);
+        // printf("[DISP] %2.1f\n",qMesg.data.temperature / 10.0);
         lcd.setCursor(0, 1);
         sprintf(buf, "%2.1f", qMesg.data.temperature / 10.0);
         lcd.printf(buf);
         break;
       case e_setpoint:
-        printf("[DISPLAY] setPoint=%d\n",qMesg.data.temperature);
+        printf("[DISP] setPoint=%d\n",qMesg.data.temperature);
         lcd.setCursor(6, 1);
         sprintf(buf, "%2.1f", qMesg.data.temperature / 10.0);
         lcd.printf(buf);
@@ -102,7 +102,7 @@ void displayTask(void *arg)
       //   break;
 
       // case e_heartbeat:
-      //   // printf("[DISPLAY] heartbeat %d\n",qMesg.data.heartbeat);
+      //   // printf("[DISP] heartbeat %d\n",qMesg.data.heartbeat);
       //   lcd.setCursor(15, 0);
       //   if (qMesg.data.heartbeat)
       //   {
@@ -115,7 +115,7 @@ void displayTask(void *arg)
       //   break;
 
       case e_error:
-        // printf("[DISPLAY] error=%d\n",qMesg.data.error);
+        // printf("[DISP] error=%d\n",qMesg.data.error);
         lcd.setCursor(12, 0);
 
         // if (qMesg.data.error == 0)
@@ -140,7 +140,7 @@ void displayTask(void *arg)
         static uint8_t actuator0 = 0;
         static uint8_t actuator1 = 0;
         const char *label;
-        printf("[DISPLAY] actuator=%d value=%d\n", qMesg.number, qMesg.data.actuators);
+        printf("[DISP] actuator=%d value=%d\n", qMesg.number, qMesg.data.actuators);
         lcd.setCursor(12, 1);
 
         // Assuming COOL & HEAT are mutual exclusive in BierBot !

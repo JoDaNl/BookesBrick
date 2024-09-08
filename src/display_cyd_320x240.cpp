@@ -12,7 +12,6 @@
 
 #define LOG_TAG "display"
 
-
 typedef enum
 {
   TEMP_SERIE,
@@ -75,18 +74,16 @@ static void cb_chart_draw_event(lv_event_t *e)
   // Customize labels of Y-axes...i.e. divide graph values by 10 (graph does not handle floats)
   if (dsc->part == LV_PART_TICKS)
   {
-    lv_snprintf(dsc->text, sizeof(dsc->text), "%d", dsc->value/10);
+    lv_snprintf(dsc->text, sizeof(dsc->text), "%d", dsc->value / 10);
   }
-
 }
 
-void cb_clicked(lv_event_t * e)
+void cb_clicked(lv_event_t *e)
 {
   lv_event_code_t code = lv_event_get_code(e);
   lv_obj_t *btn = lv_event_get_target(e);
   printf("*\n");
 }
-
 
 static void displayTemperature(float temperature, bool valid, lv_obj_t *temperatureLabel, lv_obj_t *temperatureLabelSmall, float lowRange, float highRange)
 {
@@ -173,10 +170,10 @@ void displayTask(void *arg)
   static lv_coord_t temp_value;
   static lv_coord_t setp_value;
 
-  static String deviceName;
-
+  static String displayText;
+  static uint8_t displayTextTime = 0;
+  static bool displayTextPersistent = false;
   static float lcdBacklight = 0.0;
-
 
   // lv_label_set_text(ui_testLabel, LV_SYMBOL_SETTINGS LV_SYMBOL_OK);
 
@@ -195,12 +192,12 @@ void displayTask(void *arg)
   {
     if (xQueueReceive(displayQueue, &qMesg, 100 / portTICK_RATE_MS) == pdTRUE)
     {
-      // printf("[DISPLAY] received qMesg.type=%d\n", qMesg.type);
+      // printf("[DISP] received qMesg.type=%d\n", qMesg.type);
 
       switch (qMesg.type)
       {
       case e_temperature:
-        // printf("[DISPLAY] %2.1f\n", qMesg.data.temperature / 10.0);
+        // printf("[DISP] %2.1f\n", qMesg.data.temperature / 10.0);
         displayTemperature(qMesg.data.temperature / 10.0, qMesg.valid, ui_tempLabel, ui_tempLabelSmall, 0, 100);
 
         // Update graph
@@ -215,7 +212,7 @@ void displayTask(void *arg)
           if (actuator0 == 1)
           {
             // Y-value is >1 so serie-line will be outside of visible area of graph !
-            lv_chart_set_next_value(ui_temperatureChart, ui_cool_serie, 2*10);
+            lv_chart_set_next_value(ui_temperatureChart, ui_cool_serie, 2 * 10);
           }
           else
           {
@@ -225,7 +222,7 @@ void displayTask(void *arg)
           if (actuator1 == 1)
           {
             // Y-value is >1 so serie-line will be outside of visible area of graph !
-            lv_chart_set_next_value(ui_temperatureChart, ui_heat_serie, 2*10);
+            lv_chart_set_next_value(ui_temperatureChart, ui_heat_serie, 2 * 10);
           }
           else
           {
@@ -278,20 +275,20 @@ void displayTask(void *arg)
           // the same label 2 or 3 times.
           // assure the veritical axis covers a minumum of 3 degrees
           // note values are * 10
-          if ( (y_max - y_min) < 30)
+          if ((y_max - y_min) < 30)
           {
             y_max = y_max + 15;
             y_min = y_min - 15;
           }
-          
-          // printf("[DISPLAY] Graph scale: min=%d, max=%d\n", y_min, y_max);
+
+          // printf("[DISP] Graph scale: min=%d, max=%d\n", y_min, y_max);
           lv_chart_set_range(ui_temperatureChart, LV_CHART_AXIS_PRIMARY_Y, y_min, y_max);
         }
         break;
 
       case e_setpoint:
-        printf("[DISPLAY] %2.1f\n", qMesg.data.temperature / 10.0);
         ESP_LOGI(LOG_TAG, " setpoint=%2.1f", qMesg.data.temperature / 10.0);
+        printf("[DISP] setpoint=%d, valid=%d\n", qMesg.data.temperature, qMesg.valid);
         displayTemperature(qMesg.data.temperature / 10.0, qMesg.valid, ui_setPointLabel, ui_setPointSmallLabel, 0, 100);
         setPointx10 = qMesg.data.temperature;
         setPointx10Valid = qMesg.valid;
@@ -301,7 +298,7 @@ void displayTask(void *arg)
         break;
 
       case e_actuator:
-        printf("[DISPLAY] e_actuator=%d\n", qMesg.data.actuators);
+        printf("[DISP] e_actuator=%d\n", qMesg.data.actuators);
 
         if (qMesg.valid)
         {
@@ -318,7 +315,7 @@ void displayTask(void *arg)
         {
           lv_obj_add_flag(ui_coolLabel, LV_OBJ_FLAG_HIDDEN);
           lv_obj_add_flag(ui_heatLabel, LV_OBJ_FLAG_HIDDEN);
-          lv_obj_clear_flag(ui_offLabel,LV_OBJ_FLAG_HIDDEN);
+          lv_obj_clear_flag(ui_offLabel, LV_OBJ_FLAG_HIDDEN);
           lv_obj_add_flag(ui_coolBar, LV_OBJ_FLAG_HIDDEN);
           lv_obj_add_flag(ui_heatBar, LV_OBJ_FLAG_HIDDEN);
         }
@@ -329,7 +326,7 @@ void displayTask(void *arg)
           {
             lv_obj_clear_flag(ui_coolLabel, LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(ui_heatLabel, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(ui_offLabel,LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(ui_offLabel, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(ui_coolBar, LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(ui_heatBar, LV_OBJ_FLAG_HIDDEN);
 
@@ -341,7 +338,7 @@ void displayTask(void *arg)
           {
             lv_obj_add_flag(ui_coolLabel, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(ui_heatLabel, LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(ui_offLabel,LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(ui_offLabel, LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(ui_coolBar, LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(ui_heatBar, LV_OBJ_FLAG_HIDDEN);
 
@@ -352,57 +349,68 @@ void displayTask(void *arg)
         break;
 
       case e_delay:
-        // only use compressor delay for actuator '0' 
+        // only use compressor delay for actuator '0'
         if (qMesg.number == 0)
         {
           compDelayPerc = 100 - (100 * qMesg.data.compDelay) / CFG_RELAY0_ON_DELAY;
-          // printf("[DISPLAY] compressor-delay=%d sec, %d\%\n",qMesg.data.compDelay,compDelayPerc);
+          // printf("[DISP] compressor-delay=%d sec, %d\%\n",qMesg.data.compDelay,compDelayPerc);
           lv_bar_set_value(ui_coolBar, compDelayPerc, LV_ANIM_OFF);
         }
         break;
 
-      case e_rssi:
+      case e_wifi:
         // RSSI  Value       Range WiFi Signal Strength
         // RSSI  > -30 dBm   Amazing
         // RSSI  < –67 dBm	 Fairly Good
         // RSSI  < –70 dBm	 Okay
         // RSSI  < –80 dBm	 Not good
-        // RSSI  < –90 dBm	 Extremely weak signal (unusable
-        static int rssi;
-        rssi = (int)qMesg.data.rssi; // rssi is a negative value, so cast to signed int
+        // RSSI  < –90 dBm	 Extremely weak signal
+        static uint16_t rssi;
+        static char label[2];
 
         if (qMesg.valid)
         {
-          ESP_LOGI(LOG_TAG, "RSSI=%d", qMesg.data.rssi);
-        }
+          rssi = qMesg.data.wifiData.rssi; // rssi is a signed value
+          label[0] = qMesg.data.wifiData.status; // set first character of string
 
-        if (rssi < -90)
-        {
-          lv_obj_add_flag(ui_rssiBar0Panel, LV_OBJ_FLAG_HIDDEN);
-          lv_obj_add_flag(ui_rssiBar1Panel, LV_OBJ_FLAG_HIDDEN);
-          lv_obj_add_flag(ui_rssiBar2Panel, LV_OBJ_FLAG_HIDDEN);
-          lv_obj_add_flag(ui_rssiBar3Panel, LV_OBJ_FLAG_HIDDEN);
-        }
-        else if (rssi < -80)
-        {
-          lv_obj_clear_flag(ui_rssiBar0Panel, LV_OBJ_FLAG_HIDDEN);
-          lv_obj_add_flag(ui_rssiBar1Panel, LV_OBJ_FLAG_HIDDEN);
-          lv_obj_add_flag(ui_rssiBar2Panel, LV_OBJ_FLAG_HIDDEN);
-          lv_obj_add_flag(ui_rssiBar3Panel, LV_OBJ_FLAG_HIDDEN);
-        }
-        else if (rssi < -70)
-        {
-          lv_obj_clear_flag(ui_rssiBar0Panel, LV_OBJ_FLAG_HIDDEN);
-          lv_obj_clear_flag(ui_rssiBar1Panel, LV_OBJ_FLAG_HIDDEN);
-          lv_obj_add_flag(ui_rssiBar2Panel, LV_OBJ_FLAG_HIDDEN);
-          lv_obj_add_flag(ui_rssiBar3Panel, LV_OBJ_FLAG_HIDDEN);
-        }
-        else if (rssi < -67)
-        {
-          lv_obj_clear_flag(ui_rssiBar0Panel, LV_OBJ_FLAG_HIDDEN);
-          lv_obj_clear_flag(ui_rssiBar1Panel, LV_OBJ_FLAG_HIDDEN);
-          lv_obj_clear_flag(ui_rssiBar2Panel, LV_OBJ_FLAG_HIDDEN);
-          lv_obj_add_flag(ui_rssiBar3Panel, LV_OBJ_FLAG_HIDDEN);
+          // printf("[DISP] WIFI-STATUS=%c\n", qMesg.data.wifiData.status);
+          ESP_LOGI(LOG_TAG, "RSSI=%d", rssi);
+
+          if (rssi < -90)
+          {
+            lv_obj_add_flag(ui_rssiBar0Panel, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(ui_rssiBar1Panel, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(ui_rssiBar2Panel, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(ui_rssiBar3Panel, LV_OBJ_FLAG_HIDDEN);
+          }
+          else if (rssi < -80)
+          {
+            lv_obj_clear_flag(ui_rssiBar0Panel, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(ui_rssiBar1Panel, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(ui_rssiBar2Panel, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(ui_rssiBar3Panel, LV_OBJ_FLAG_HIDDEN);
+          }
+          else if (rssi < -70)
+          {
+            lv_obj_clear_flag(ui_rssiBar0Panel, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_rssiBar1Panel, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(ui_rssiBar2Panel, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(ui_rssiBar3Panel, LV_OBJ_FLAG_HIDDEN);
+          }
+          else if (rssi < -67)
+          {
+            lv_obj_clear_flag(ui_rssiBar0Panel, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_rssiBar1Panel, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_rssiBar2Panel, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(ui_rssiBar3Panel, LV_OBJ_FLAG_HIDDEN);
+          }
+          else
+          {
+            lv_obj_clear_flag(ui_rssiBar0Panel, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_rssiBar1Panel, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_rssiBar2Panel, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(ui_rssiBar3Panel, LV_OBJ_FLAG_HIDDEN);
+          }
         }
         else
         {
@@ -410,7 +418,12 @@ void displayTask(void *arg)
           lv_obj_clear_flag(ui_rssiBar1Panel, LV_OBJ_FLAG_HIDDEN);
           lv_obj_clear_flag(ui_rssiBar2Panel, LV_OBJ_FLAG_HIDDEN);
           lv_obj_clear_flag(ui_rssiBar3Panel, LV_OBJ_FLAG_HIDDEN);
+
+          label[0] = '*';
         }
+
+        label[1] = 0; // terminate string
+        lv_label_set_text(ui_internetLabel, label);
         break;
 
       case e_time:
@@ -420,33 +433,61 @@ void displayTask(void *arg)
         break;
 
       case e_heartbeat:
+      {
         uint8_t hearbeatValue;
         uint8_t hearbeatMax;
+
+        const lv_color_t green_bar = lv_color_make(0x00, 0x77, 0x0F);
+        const lv_color_t red_bar = lv_color_make(0x77, 0x00, 0x0F);
+
+        lv_color_t color;
 
         hearbeatValue = qMesg.data.heartBeat & 255;
         hearbeatMax = qMesg.data.heartBeat >> 8;
 
-        lv_bar_set_range(ui_backendBar, 0, hearbeatMax + 1);
-        lv_bar_set_value(ui_backendBar, hearbeatValue + 1, LV_ANIM_ON);
-        break;
-
-      case e_device_name:
-        static String *stringPtr;
-
-        stringPtr = qMesg.data.stringPtr;
-
-        if (stringPtr == NULL)
+        if (qMesg.valid)
         {
-          ESP_LOGI(LOG_TAG, "Device Name = NULL");
+          color = green_bar;
         }
         else
         {
-          deviceName = *stringPtr;
-          ESP_LOGI(LOG_TAG, "Device Name=%s", deviceName);
+          color = red_bar;
+        }
+
+        lv_obj_set_style_bg_color(ui_backendBar, color, LV_PART_INDICATOR | LV_STATE_DEFAULT);
+
+        lv_bar_set_range(ui_backendBar, 0, hearbeatMax + 1);
+        lv_bar_set_value(ui_backendBar, hearbeatMax - hearbeatValue + 1, LV_ANIM_ON);
+      }
+      break;
+
+      case e_display_text:
+        static String *stringPtr;
+
+        stringPtr = qMesg.data.textData.stringPtr;
+
+        if (stringPtr == NULL)
+        {
+          ESP_LOGI(LOG_TAG, "Display-text = NULL");
+        }
+        else
+        {
+          displayText = *stringPtr;
+          switch (qMesg.data.textData.messageType)
+          {
+          case e_device_name:
+            lv_label_set_text(ui_titleLabel, displayText.c_str());
+            break;
+          case e_status_bar:
+            displayTextTime = qMesg.data.textData.timeInSec;
+            displayTextPersistent = (displayTextTime == 0);
+            lv_label_set_text(ui_messageLabel, displayText.c_str());
+            ESP_LOGI(LOG_TAG, "status message=%s", displayText);
+            break;
+          }
           delete stringPtr; // important string has been used...time to delete it !!!
         }
 
-        lv_label_set_text(ui_titleLabel, deviceName.c_str());
         break;
       }
     }
@@ -470,97 +511,36 @@ void displayTask(void *arg)
       {
         lv_label_set_text_fmt(ui_timeLabel, "--%c--", separator);
       }
+
+      // handle status text
+      if (~displayTextPersistent)
+      {
+        if (displayTextTime == 0)
+        {
+          lv_label_set_text(ui_messageLabel, "");
+        }
+        else
+        {
+          if (displayTextTime > 0)
+          {
+            displayTextTime--;
+          }
+        }
+      }
     }
 
     // Update LVGL-GUI
     lv_timer_handler();
-    
+
 #if (CFG_ENABLE_SCREENSHOT == true)
     static int prevButton = 1;
     extern lv_disp_drv_t disp_drv;
-    uint8_t * ptr;
+    uint8_t *ptr;
 
-    // GPIO_NUM_0 == BOOT button 
+    // GPIO_NUM_0 == BOOT button
     if (digitalRead(GPIO_NUM_0) == 0 && prevButton == 1)
     {
-      printf("[DISPLAY] SCREENSHOT\n");   
-
-      // ptr = (uint8_t *)disp_drv.draw_buf->buf1;
-      // for(int x=0; x<disp_drv.hor_res-1; x++)
-      // {
-      //   printf("[SHOT] x=%03d: ",x);
-      //   for(int y=0; y<disp_drv.ver_res; y++)
-      //   {
-      //     printf("%02X,",*ptr++);
-      //   }
-      //   printf("%02X\n",*ptr++);
-      // }
-    // }
-
-    // static int prevButton = 1;
-    // if (digitalRead(GPIO_NUM_0) == 0 && prevButton == 1)
-    // {
-
-    //   printf("[DISPLAY] SCREENSHOT\n");   
-      
-    //   lv_obj_t * root = lv_scr_act();
-    //   //lv_obj_t * snapshot_obj = lv_img_create(root);
-    //   lv_img_dsc_t * snapshot; //  = (lv_img_dsc_t *)lv_img_get_src(snapshot_obj);
-    //   lv_color_t pixel_color;
-    //   uint8_t red;
-    //   uint8_t green;
-    //   uint8_t blue;
-
-    //   lv_coord_t w, h;
-      
-    //   snapshot = lv_snapshot_take_to_buf(root, LV_IMG_CF_RGB565);
-    //   if (snapshot == NULL)
-    //   {
-    //     printf("[DISPLAY] Cannot allocate memeory for snapshot\n");
-    //   }
-    //   else
-    //   {
-
-
-      // w = lv_obj_get_width(snapshot);
-      // h = lv_obj_get_height(snapshot);
-
-      // w = snapshot->header.w;
-      // h = snapshot->header.h;
-
-      // printf("[DISPLAY] SCREENSHOT w=%d\n",w);   
-      // printf("[DISPLAY] SCREENSHOT h=%d\n",h);   
-      // }
-
-
-      int w, h;
-
-      lv_obj_t * root = lv_scr_act();
-      w = lv_obj_get_width(root);
-      h = lv_obj_get_height(root);
-      printf("[DISPLAY] SCREENSHOT w=%d\n",w);   
-      printf("[DISPLAY] SCREENSHOT h=%d\n",h);   
-
-      extern lv_disp_drv_t disp_drv;
-      uint16_t * ptr;
-
-      uint16_t pixel;
-      uint8_t red, green ,blue;
-
-      ptr = (uint16_t *)disp_drv.draw_buf->buf1;
-
-      for(int x=0; x<w; x++)
-      {
-        printf("[SHOT] x=%03d: ",x);
-        for(int y=0; y<1; y++)
-        {
-          pixel = (uint16_t)*ptr++;
-          red   = pixel & 0x1F;
-          blue  = (pixel >> 11) & 0x1F;
-          printf("R:%d, G:%d, B:%d \n", red, green, blue);
-        }
-        printf("\n");
-      }
+      printf("[DISP] SCREENSHOT -TESTCODE\n");
     }
     prevButton = digitalRead(GPIO_NUM_0);
 
@@ -570,11 +550,10 @@ void displayTask(void *arg)
     // this is done after (1st) invocation of lv_imer_handler() to make
     // sure display buffer has valid content and no random pixels (after power-up)
     if (lcdBacklight < 1.0)
-    {     
+    {
       lcdBacklight += 0.02;
       smartdisplay_lcd_set_backlight(lcdBacklight);
     }
-
   }
 };
 

@@ -119,7 +119,7 @@ void initBlinkLed(uint8_t pin)
   }
 
   // create task
-  xTaskCreate(blinkLedTask, "blinkLedTask", 1 * 1024, NULL, 10, &blinkLedTaskHandle);
+  xTaskCreatePinnedToCore(blinkLedTask, "blinkLedTask", 1 * 1024, NULL, 10, &blinkLedTaskHandle, 1);
 }
 
 // end of file

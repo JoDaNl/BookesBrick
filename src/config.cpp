@@ -19,14 +19,21 @@
 #define DOUBLERESETDETECTOR_DEBUG true
 #include <ESP_DoubleResetDetector.h>
 #endif
-
 #include "config.h"
 
 #define LOG_TAG "config"
 
+#define DELAY (100)                   // Loop delay in milliseconds
+#define RSSI_COUNT (1 * 1000 / DELAY) // Send WiFi info to controlller every n loop-interations
+#define PING_COUNT (30)               // Do a ping ever n WiFi checks
+
+// Queues
+static xQueueHandle WiFiQueue = NULL;
+
 // module scope
 static bool wmSaveConfig = false;
-static TaskHandle_t wifiCheckTaskHandle = NULL;
+// static TaskHandle_t wifiCheckTaskHandle = NULL;
+static TaskHandle_t WiFiTaskHandle = NULL;
 static bool _startCaptivePortal;
 
 #if (CFG_COMM_WM_USE_DRD == true)
@@ -123,7 +130,7 @@ static void initDRD(void)
   ESP_LOGI(LOG_TAG, "initDRD..");
 
   // create task first...in order to have LED blinking
-  xTaskCreate(drdTask, "drdTask", 1 * 1024, NULL, 10, &drdTaskHandle);
+  xTaskCreateStaticPinnedToCore(drdTask, "drdTask", 1 * 1024, NULL, 10, &drdTaskHandle, 1);
 }
 #endif
 
@@ -140,8 +147,12 @@ static void printConfig(void)
   ESP_LOGI(LOG_TAG, "   hostname=%s", config.hostname.c_str());
 }
 
-static void readConfig(void)
+void readConfig(void)
 {
+  // portMUX_TYPE myMutex = portMUX_INITIALIZER_UNLOCKED;
+  // taskENTER_CRITICAL(&myMutex);
+
+  // critical section
   prefs.begin(BBPREFS, true); // read only mode
   config.apiKey = prefs.getString(BBPREFS_APIKEY, "");
   config.proApiKey = prefs.getString(BBPREFS_PROAPIKEY, "");
@@ -150,7 +161,9 @@ static void readConfig(void)
   config.hostname = prefs.getString(BBPREFS_HOSTNAME, CFG_COMM_HOSTNAME);
   prefs.end();
 
-  printf("[CONFIG] readConfig\n");
+  // taskEXIT_CRITICAL(&myMutex);
+
+  printf("[CONF] readConfig\n");
   printConfig();
 }
 
@@ -160,7 +173,7 @@ static void readConfig(void)
 
 static void writeConfig(void)
 {
-  printf("[CONFIG] writeConfig()\n");
+  printf("[CONF] writeConfig()\n");
   printConfig();
 
   prefs.begin(BBPREFS, false); // write mode
@@ -243,14 +256,14 @@ public:
 
   void handleRequest(AsyncWebServerRequest *request)
   {
-    printf("[CONFIG] Handlerequest url=%s\n", request->url().c_str());
+    printf("[CONF] Handlerequest url=%s\n", request->url().c_str());
     request->redirect("/config.html");
   }
 };
 
 String htmlProcessor(const String &str)
 {
-  printf("[CONFIG] html_processor: %s\n", str);
+  printf("[CONF] html_processor: %s\n", str);
 
   if (str == "apikey")
   {
@@ -293,7 +306,7 @@ void startConfigPortal()
                  // check if submit button has been pressed
                  if (request->hasArg("submit"))
                  {
-                   printf("[CONFIG] submit pressed\n");
+                   printf("[CONF] submit pressed\n");
                    for (int i = 0; i < numParams; i++)
                    {
                      AsyncWebParameter *p = request->getParam(i);
@@ -304,7 +317,7 @@ void startConfigPortal()
 
                        pValue.trim(); // remove any leading & trailing spaces
 
-                       printf("[CONFIG] config-setting %s set to: %s\n", pName.c_str(), pValue.c_str());
+                       printf("[CONF] config-setting %s set to: %s\n", pName.c_str(), pValue.c_str());
 
                        if (pName.equals("apikey"))
                        {
@@ -335,7 +348,7 @@ void startConfigPortal()
                    writeConfig();
                    request->send(200, "text/plain", "Values saved. Bookus Brick will now restart");
 
-                   printf("[CONFIG] RESTARTING...\n");
+                   printf("[CONF] RESTARTING...\n");
                    vTaskDelay(3000 / portTICK_RATE_MS);
                    ESP.restart();
                  }
@@ -345,14 +358,13 @@ void startConfigPortal()
                  {
                    request->send(200, "text/plain", "Cancelled. Bookus Brick will now restart");
 
-                   printf("[CONFIG] cancel pressed\n");
-                   printf("[CONFIG] RESTARTING...\n");
+                   printf("[CONF] cancel pressed\n");
+                   printf("[CONF] RESTARTING...\n");
                    vTaskDelay(3000 / portTICK_RATE_MS);
                    ESP.restart();
                  }
 
-                 request->send(200, "text/plain", "Unknown");
-               });
+                 request->send(200, "text/plain", "Unknown"); });
 
   webServer.on("/config.html", HTTP_GET, [](AsyncWebServerRequest *request)
                { request->send(LittleFS, "/config.html", String(), false, htmlProcessor); });
@@ -363,7 +375,7 @@ void startConfigPortal()
 
   webServer.onNotFound([](AsyncWebServerRequest *request)
                        {
-      printf("[CONFIG] webpage not found: %s\n", request->url().c_str());
+      printf("[CONF] webpage not found: %s\n", request->url().c_str());
       request->send(404, "text/plain", "404: Not found"); });
 
   // start DNS server.
@@ -375,95 +387,310 @@ void startConfigPortal()
   webServer.begin();
 }
 
-static void startWifi()
+void stopConfigPortal()
+{
+  webServer.end();
+  dnsServer.stop();
+  WiFi.disconnect();
+}
+
+static void startWiFi()
 {
   bool status;
 
   printf("\n");
-  printf("[CONFIG] Connecting to WIFI...\n");
-  printf("[CONFIG] hostname=<%s>\n", config.hostname.c_str());
-  printf("[CONFIG]     SSID=<%s>\n", config.SSID.c_str());
-  printf("[CONFIG]   passwd=<%s>\n", config.passwd.c_str());
 
-  WiFi.setHostname(config.hostname.c_str());
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(config.SSID, config.passwd);
-
-  vTaskDelay(1000 / portTICK_RATE_MS);
-
-  while (WiFi.status() != WL_CONNECTED)
+  if (config.SSID.length() > 1 && config.passwd.length() > 1)
   {
-    printf(".");
-    WiFi.reconnect();
-    vTaskDelay(1000 / portTICK_RATE_MS);
-  }
-  printf("\n\n");
+    printf("[CONF] Connecting to WIFI...\n");
+    printf("[CONF] hostname=<%s>\n", config.hostname.c_str());
+    printf("[CONF]     SSID=<%s>\n", config.SSID.c_str());
+    printf("[CONF]   passwd=<%s>\n", config.passwd.c_str());
 
-  printf("[CONFIG] WIFI connected, IP-address: %s\n", WiFi.localIP().toString().c_str());
-
-#ifdef BBPINGURL
-  // We should have WiFi connection...check if we can reach the internet
-
-  status = Ping.ping(BBPINGURL, 3);
-  if (status)
-  {
-    printf("[CONFIG] We have internet connection !!!\n");
+    WiFi.setHostname(config.hostname.c_str());
+    WiFi.mode(WIFI_STA);
+    WiFi.setAutoReconnect(true);
+    WiFi.setSleep(false);
+    WiFi.begin(config.SSID, config.passwd);
   }
   else
   {
-    printf("[CONFIG] We have NO internet connection !!!\n");
+    printf("[CONF] NO VALID WIFI CONFIGURATION !!!\n");
   }
-#endif
 }
 
-// ===========================================================
-// WIFI CHECK TASK
-// ===========================================================
-
-static void wifiCheckTask(void *arg)
+static void stopWiFi(void)
 {
-  static bool status;
-  static int16_t rssi;
+}
+
+static void WiFiEventHandler(WiFiEvent_t event)
+{
+  static WiFiQueueItem_t queueItem;
+
+  queueItem.mesgId = e_event;
+  queueItem.event = event;
+
+  //  WiFiQueueSend(&queueItem, 0);
+
+  if (WiFiQueue != NULL)
+  {
+    xQueueSendFromISR(WiFiQueue, &queueItem, NULL);
+  }
+}
+
+typedef enum WiFiModeRequest
+{
+  REQUEST_STOP,
+  REQUEST_WIFI,
+  REQUEST_PORTAL
+} WiFiModeRequest_t;
+
+typedef enum WiFiState
+{
+  STATE_STOP,
+  STATE_WIFI_REQUESTED,
+  STATE_WIFI_CONNECTED,
+  STATE_PORTAL_REQUESTED,
+  STATE_PORTAL_CONNECTED
+} WiFiState_t;
+
+
+
+static void WiFiTask(void *arg)
+{
+  static uint16_t status_count;
+  static uint16_t ping_count;
   static controllerQItem_t WiFiMesg;
+  static WiFiQueueItem_t queueItem;
+  static WiFiModeRequest_t request;
+  static WiFiState_t state;
 
-  printf("[CONFIG] Entering task loop...\n");
+  status_count = 2; // after boot check
+  ping_count = 2;   // after boot & connection check
 
-  if (_startCaptivePortal)
-  {
-    startConfigPortal();
-  }
-  else
-  {
-    startWifi();
-  }
+  request = REQUEST_STOP;
+  state = STATE_STOP;
+
+  // one-time WiFi configuration stuff
+  WiFi.onEvent(WiFiEventHandler);
+  WiFi.setHostname(config.hostname.c_str());
+
+  WiFi.mode(WIFI_STA);
+  WiFi.setAutoReconnect(false); 
+  WiFi.begin(config.SSID, config.passwd);
+
+  printf("[WiFi] Entering task loop...\n");
 
   // TASK LOOP
   while (true)
   {
-    // Check WiFi status..only in normal operation  mode...do not check Wifi when portal is open
-    if (!config.inConfigMode)
-    {
-      // printf("[CONFIG] Check WIFI...\n");
 
-      if (WiFi.status() != WL_CONNECTED)
+    if (xQueueReceive(WiFiQueue, &queueItem, 100 / portTICK_RATE_MS) == pdTRUE)
+    {
+      printf("[WIFI] message received : %d\n", queueItem.mesgId);
+
+      switch (queueItem.mesgId)
       {
-        printf("[CONFIG] Reconnecting to WiFi...\n");
-        WiFi.disconnect();
-        WiFi.reconnect();
+      case e_cmd_start_wifi:
+        request = REQUEST_WIFI;
+        break;
+
+      case e_cmd_start_portal:
+        request = REQUEST_PORTAL;
+        break;
+
+      case e_cmd_stop:
+        request = REQUEST_STOP;
+        break;
+
+      case e_event:
+        printf("[WIFI] event reveived : %s\n", WiFi.eventName(queueItem.event));
+
+        switch (queueItem.event)
+        {
+        case ARDUINO_EVENT_WIFI_STA_GOT_IP:
+          printf("[WIFI] WIFI connected, IP-address: %s\n", WiFi.localIP().toString().c_str());
+          state = STATE_WIFI_CONNECTED;
+          break;
+
+        case ARDUINO_EVENT_WIFI_STA_LOST_IP:
+          state = STATE_STOP;
+          break;
+
+        case ARDUINO_EVENT_WIFI_STA_CONNECTED:
+          break;
+
+        case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
+          state = STATE_STOP;
+          break;
+        }
       }
 
-      rssi = WiFi.RSSI();
-      // send RSSI to controller
-      WiFiMesg.type = e_mtype_wifi;
-      WiFiMesg.mesg.WiFiMesg.mesgId = e_msg_WiFi_rssi;
-      WiFiMesg.mesg.WiFiMesg.data = rssi;
-      controllerQueueSend(&WiFiMesg, 0);      
+
+// #ifdef BLABLA
+    printf("[WIFI] state=");
+    switch (state)
+    {
+    case STATE_STOP:
+      printf("STATE_STOP");
+      break;
+    case STATE_WIFI_REQUESTED:
+      printf("STATE_WIFI_REQUESTED");
+      break;
+    case STATE_WIFI_CONNECTED:
+      printf("STATE_WIFI_CONNECTED");
+      break;
+    case STATE_PORTAL_REQUESTED:
+      printf("STATE_PORTAL_REQUESTED");
+      break;
+    case STATE_PORTAL_CONNECTED:
+      printf("STATE_PORTAL_CONNECTED");
+      break;
+    }
+    printf(", request=");
+    switch (request)
+    {
+    case REQUEST_STOP:
+      printf("REQUEST_TOP");
+      break;
+    case REQUEST_WIFI:
+      printf("REQUEST_WIFI");
+      break;
+    case REQUEST_PORTAL:
+      printf("REQUEST_PORTAL");
+      break;
+    }
+    printf(", wifi.status()=%d\n",WiFi.status());
+// #endif
+
+    } // if (xQueueReceive(WiFiQueue
+
+
+    switch (state)
+    {
+    case STATE_STOP:
+      if (request == REQUEST_WIFI)
+      {
+        state = STATE_WIFI_REQUESTED;
+
+//         WiFi.disconnect();
+
+        // TODO : add check for valid config
+
+        // WiFi.mode(WIFI_STA);
+        // WiFi.begin(config.SSID, config.passwd);
+        vTaskDelay(1000 / portTICK_RATE_MS);
+      }
+
+      if (request == REQUEST_PORTAL)
+      {
+
+      }
+
+      break;
+
+    case STATE_WIFI_REQUESTED:
+      break;
+
+    case STATE_WIFI_CONNECTED:
+      if (request == REQUEST_STOP)
+      {
+//        WiFi.disconnect();
+//        vTaskDelay(1000 / portTICK_RATE_MS);
+      }
+
+      if (request == REQUEST_PORTAL)
+      {
+
+      }
+      break;
+
+    case STATE_PORTAL_REQUESTED:
+      break;
+
+    case STATE_PORTAL_CONNECTED:
+      break;
     }
 
-    // loop delay
-    vTaskDelay(5000 / portTICK_RATE_MS);
+    // Send WiFi status info to controller
+    if (status_count == 0)
+    {
+      // if (state == STATE_WIFI_CONNECTED)
+      if (WiFi.status() == WL_CONNECTED)
+      {
+        // WiFi connected...so set RSSI
+        WiFiMesg.mesg.WiFiMesg.rssi = WiFi.RSSI();
+
+        // Only set state when not connected to the internet
+        //     due to differenct 'frequencies' of checking WiFi vesus Internet availability
+        if (WiFiMesg.mesg.WiFiMesg.wifiStatus != e_msg_wifi_internet_connected)
+        {
+          WiFiMesg.mesg.WiFiMesg.wifiStatus = e_msg_wifi_accespoint_connected;
+        }
+
+#ifdef BBPINGURL
+        // Check if we can reach the internet/brewbricks-server
+        if (ping_count == 0)
+        {
+
+          if (Ping.ping(BBPINGURL))
+          {
+            printf("[CONF] PING: We have internet connection !!!\n");
+            // Internet conmection as ping to server was successful
+            WiFiMesg.mesg.WiFiMesg.wifiStatus = e_msg_wifi_internet_connected;
+
+            ping_count = PING_COUNT; // long re-test count
+          }
+          else
+          {
+            printf("[CONF] PING: We have NO internet connection !!!\n");
+            // No internet, but WiFi is still connected
+            WiFiMesg.mesg.WiFiMesg.wifiStatus = e_msg_wifi_accespoint_connected;
+
+            ping_count = 3; // try again in 3 seconds
+          }
+        }
+        else
+        {
+          ping_count--;
+        }
+#endif
+      }
+      else
+      {
+        // No WiFi connected
+        WiFiMesg.mesg.WiFiMesg.rssi = -1024;
+        WiFiMesg.mesg.WiFiMesg.wifiStatus = e_msg_wifi_unconnected;
+      }
+
+      WiFiMesg.type = e_mtype_wifi;
+      WiFiMesg.valid = true;
+      controllerQueueSend(&WiFiMesg, 0);
+
+      status_count = RSSI_COUNT;
+    }
+    else
+    {
+      status_count--;
+    }
+
+    // printf("[CONF] status_count=%d, ping_count=%d \n", status_count, ping_count);
   }
-};
+}
+
+// wrapper for sendQueue
+int WiFiQueueSend(WiFiQueueItem_t *WiFiQMesg, TickType_t xTicksToWait)
+{
+  int r;
+  r = pdTRUE;
+
+  if (WiFiQueue != NULL)
+  {
+    r = xQueueSend(WiFiQueue, WiFiQMesg, xTicksToWait);
+  }
+
+  return r;
+}
 
 // ============================================================================
 // INIT WIFI
@@ -474,28 +701,34 @@ static void wifiCheckTask(void *arg)
 
 void initWiFi(bool startCaptivePortal)
 {
-  printf("[CONFIG] initWifi\n");
+  printf("[CONF] initWifi\n");
 
   _startCaptivePortal = startCaptivePortal;
 
   if (!LittleFS.begin(true))
   {
-    Serial.println("[CONFIG] Error mounting LittleFS");
+    Serial.println("[CONF] Error mounting LittleFS");
   }
 
-  Serial.println("[CONFIG] available files:");
+  Serial.println("[CONF] available files:");
   listDir(LittleFS, "/", 2);
 
   readConfig();
+
+  // FOR DEBUG ONLY !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+  // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 #if (CFG_COMM_WM_USE_DRD == true)
   initDRD();
 #endif
 
-  // create task first...in order to have LED blinking
-  xTaskCreate(wifiCheckTask, "wifiCheckTask", 2 * 1024, NULL, 10, &wifiCheckTaskHandle);
+  WiFiQueue = xQueueCreate(16, sizeof(WiFiQueueItem_t));
 
-  printf("[CONFIG] initWifi() DONE\n");
+  // create task
+  xTaskCreatePinnedToCore(WiFiTask, "WiFiTask", 3 * 1024, NULL, 10, &WiFiTaskHandle, 1); // was 2 * 1024
+
+  printf("[CONF] initWifi() DONE\n");
 }
 
 // end of file

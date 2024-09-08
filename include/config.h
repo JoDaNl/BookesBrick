@@ -6,16 +6,30 @@
 #define __CONFIG_H__
 
 #include <Arduino.h>
+#include <WiFiGeneric.h>
 
 //=============================================
 
-#define CFG_TEMP_SENSOR_SIMULATION      false
+// BAUDRATE SERIAL PORT
+#define CFG_BAUDRATE (115200)
+
+// SENSOR TYPE
+#define CFG_TEMP_SENSOR_TYPE_SIMULATION_ENABLED true 
+#define CFG_TEMP_SENSOR_TYPE_DS18B20_ENABLED    false
+#define CFG_TEMP_SENSOR_TYPE_SHT3X_ENABLED      false
+#define CFG_TEMP_SENSOR_TYPE_SHT4X_ENABLED      false
+
+// SENSOR SPECIFIC OPTIONS
+#define CFG_TEMP_SENSOR_SCAN_I2C                true
+#define CFG_TEMP_SENSOR_TYPE_DS18B20_CHECK_COUNTERFEIT   true
+
+// TEMPERATURE MEASUREMENT OPTIONS
 #define CFG_TEMP_PIN                    GPIO_NUM_10  // 16 = Green led on CYD
 #define CFG_TEMP_IN_CELCIUS             true
 //#define CFG_TEMP_IN_FARENHEID          true
-#define CFG_TEMP_SMOOTH_SAMPLES         7             // must be odd number
-#define CFG_TEMP_MAX_DEVIATIONB         10            // 1 degree * 10
-#define CFG_TEMP_DS18B20_CHECK_COUNTERFEIT   true
+#define CFG_TEMP_SMOOTH_NUM_SAMPLES     7             // must be odd number
+#define CFG_TEMP_SMOOTH_MAX_DEVIATION   10            // 1 degree * 10
+
 
 //=============================================
 
@@ -23,7 +37,10 @@
 
 //=============================================
 
-// Relay outputs
+#define CFG_RELAY_TYPE_GPIO             false
+#define CFG_RELAY_TYPE_IOEXP            true
+
+#if (CFG_RELAY_TYPE_GPIO == true)
 //#define CFG_RELAY0_PIN                  GPIO_NUM_17
 #define CFG_RELAY0_PIN                  0     // 0 = no relay
 #define CFG_RELAY0_ON_LEVEL             0
@@ -39,6 +56,21 @@
 #define CFG_RELAY1_ON_DELAY             0
 #define CFG_RELAY1_OFF_DELAY            0
 #define CFG_RELAY1_LABEL                "Heat"
+#endif
+
+#if (CFG_RELAY_TYPE_IOEXP == true)
+#define CFG_RELAY0_PIN                  0
+#define CFG_RELAY0_ON_LEVEL             1
+#define CFG_RELAY0_ON_DELAY             200                   // compressor-delay in seconds
+#define CFG_RELAY0_OFF_DELAY            0
+#define CFG_RELAY0_LABEL                "Cool"
+
+#define CFG_RELAY1_PIN                  1
+#define CFG_RELAY1_ON_LEVEL             1
+#define CFG_RELAY1_ON_DELAY             0
+#define CFG_RELAY1_OFF_DELAY            0
+#define CFG_RELAY1_LABEL                "Heat"
+#endif
 
 //=============================================
 
@@ -82,9 +114,27 @@
 #define BBPREFS_HOSTNAME                "bbPrHostname"
 
 #define BBDRDTIMEOUT                    10
-#define BBPINGURL                       CFG_COMM_BBURL_API_SERVER
+// #define BBPINGURL                    CFG_COMM_BBURL_API_SERVER
+#define BBPINGURL                       (IPAddress(8,8,8,8))  // google.com
 
 //=============================================
+
+typedef enum WiFiQueueMesgType
+{
+    e_cmd_start_wifi,
+    e_cmd_start_portal,
+    e_cmd_stop,
+    e_event,
+    e_unknown
+} WiFiQueueMesgType_t;
+
+
+typedef struct WiFiQueueItem
+{
+  WiFiQueueMesgType_t mesgId;
+  WiFiEvent_t event;
+} WiFiQueueItem_t;
+
 
 typedef struct configValues
 {
@@ -98,8 +148,9 @@ typedef struct configValues
 
 extern configValues_t config;
 
-void initWiFi(bool);
-extern void initWiFi(void);
+extern void initWiFi(bool);
 extern bool checkBootConfigMode(void);
+extern void readConfig(void);
+extern int WiFiQueueSend(WiFiQueueItem_t *, TickType_t);
 
 #endif

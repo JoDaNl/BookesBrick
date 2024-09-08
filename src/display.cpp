@@ -26,6 +26,24 @@ int displayQueueSend(displayQueueItem_t * displayQMesg, TickType_t xTicksToWait)
   return r;
 }
 
+
+
+//helper function : send text-message to display
+void displayText(String * message, displayMessageType_t messageType, uint8_t timeInSec)
+{
+  displayQueueItem_t   displayQMesg;
+
+  displayQMesg.type  = e_display_text;
+  displayQMesg.data.textData.stringPtr = message; 
+  displayQMesg.data.textData.timeInSec = timeInSec;
+  displayQMesg.data.textData.messageType = messageType;
+  displayQMesg.valid = true;
+
+  displayQueueSend(&displayQMesg , 0);
+}
+
+
+
 #ifdef CFG_DISPLAY_CYD_320x240
 extern void  initDisplay_cyd_320x240(void);
 #endif
@@ -36,9 +54,9 @@ extern void  initDisplay_cyd_480x320(void);
 void initDisplay(void)
 {
 #ifdef CFG_DISPLAY_NONE
-  printf("[DISPLAY] no display enabled\n");
+  printf("[DISP] no display enabled\n");
 #else
-  printf("[DISPLAY] init\n");
+  printf("[DISP] init\n");
   
 #ifdef CFG_DISPLAY_CYD_320x240
   initDisplay_cyd_320x240();
@@ -50,11 +68,11 @@ void initDisplay(void)
   displayQueue = xQueueCreate(5, sizeof(displayQueueItem_t));
   if (displayQueue == 0)
   {
-    printf("[DISPLAY] Cannot create displayQueue. This is FATAL");
+    printf("[DISP] Cannot create displayQueue. This is FATAL");
   }
 
   // create task
-  xTaskCreate(displayTask, "displayTask", 10 * 1024, NULL, 10, &displayTaskHandle);
+  xTaskCreatePinnedToCore(displayTask, "displayTask", 10 * 1024, NULL, 10, &displayTaskHandle, 1);
 #endif
 }
 

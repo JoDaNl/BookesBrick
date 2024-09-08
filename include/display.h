@@ -10,37 +10,55 @@ typedef enum displayQueueDataType
     e_setpoint,
     e_actuator,
     e_delay,
-    e_rssi,
+    e_wifi,
     e_time,
     e_heartbeat,
     e_error,
-    e_device_name
+    e_display_text
 } displayQueueDataType_t;
 
+typedef enum displayMessageType
+{
+  e_device_name,
+  e_status_bar
+} displayMessageType_t;
+
+typedef struct displayTextData
+{
+  String * stringPtr;
+  uint8_t timeInSec;
+  displayMessageType_t messageType;
+} displayTextData_t;
+
+typedef struct displayWiFiData
+{
+  int16_t rssi; // signed
+  char status;  
+} displayWiFiData_t;
 
 typedef union displayQueueData
 {
   int16_t temperature;
   int16_t setPoint;
   uint8_t actuators;
-  int16_t rssi;
   uint16_t compDelay;
   uint16_t time;
   uint16_t heartBeat;
-  String * stringPtr;
+  displayTextData_t textData;
+  displayWiFiData_t wifiData;
 } displayQueueData_t;
 
 typedef struct displayQueueItem
 {
   displayQueueDataType_t type;
+  displayQueueData_t data;
   bool valid;
   uint8_t number;
-  displayQueueData_t data;
 } displayQueueItem_t;
 
 extern xQueueHandle displayQueue;
 extern void displayTask(void *);
 extern int displayQueueSend(displayQueueItem_t *, TickType_t);
 extern void initDisplay(void);
-
+extern void displayText(String *, displayMessageType_t, uint8_t);
 #endif

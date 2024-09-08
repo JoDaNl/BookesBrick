@@ -39,7 +39,7 @@ typedef struct controllerQSensorMesg
 
 
 // ====================================
-// BACKEND : actuators / Relays / diplay
+// BACKEND : actuators / relays
 // ====================================
 
 typedef enum controllerQBackendMesgType
@@ -62,19 +62,23 @@ typedef struct controllerQBackendMesg
 } controllerQBackendMesg_t;
 
 // ====================================
-// WiFI
+// WiFi
 // ====================================
 
 typedef enum controllerQWiFiMesgType
 {
-    e_msg_WiFi_unknown,
-    e_msg_WiFi_rssi,
+    e_msg_wifi_unknown,
+    e_msg_wifi_unconnected,
+    e_msg_wifi_accespoint_connected,
+    e_msg_wifi_internet_connected,
+    e_msg_wifi_portal_opened
 } controllerQWiFiMesgType_t;
 
 typedef struct controllerQWiFiMesg
 {
-  controllerQWiFiMesgType_t mesgId;
-  int16_t data;
+  controllerQWiFiMesgType_t wifiStatus;
+  int16_t rssi;
+  bool valid;
 } controllerQWiFiMesg_t;
 
 // ====================================

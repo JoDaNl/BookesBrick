@@ -1,7 +1,7 @@
-SET(SOURCES screens/ui_mainScreen.c
-    screens/ui_configurationScreen.c
+SET(SOURCES ui_mainScreen.c
+    ui_configurationScreen.c
     ui.c
-    components/ui_comp_hook.c
+    ui_comp_hook.c
     ui_helpers.c
     ui_events.c
     fonts/ui_font_weight100Font.c

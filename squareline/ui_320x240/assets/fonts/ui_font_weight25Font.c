@@ -4,7 +4,7 @@
  * Opts: --bpp 8 --size 25 --font D:/cs/jos/Documents/_Brouwerij/Automatisering/github/BookesBrick/squareline/ui_320x240/assets/fonts/digital-7 (mono italic).ttf -o D:/cs/jos/Documents/_Brouwerij/Automatisering/github/BookesBrick/squareline/ui_320x240/assets/fonts\ui_font_weight25Font.c --format lvgl --symbols  +-.:0123456789HILO --no-compress --no-prefilter
  ******************************************************************************/
 
-#include "../ui.h"
+#include "ui.h"
 
 #ifndef UI_FONT_WEIGHT25FONT
 #define UI_FONT_WEIGHT25FONT 1

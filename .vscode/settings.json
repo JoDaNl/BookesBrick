@@ -11,6 +11,8 @@
     "string_view": "cpp",
     "initializer_list": "cpp",
     "regex": "cpp",
-    "functional": "cpp"
+    "functional": "cpp",
+    "*.copy": "c",
+    "esp_doubleresetdetector.h": "c"
   }
 }

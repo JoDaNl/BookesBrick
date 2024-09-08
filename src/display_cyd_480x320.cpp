@@ -14,7 +14,7 @@
 void initDisplay_cyd_480x320(void)
 {
   // init TFT display & LVGL
-  printf("[DISPLAY] CYD - INIT\n");
+  printf("[DISP] CYD - INIT\n");
   smartdisplay_init();
   smartdisplay_lcd_set_backlight(1.0f);
   auto disp = lv_disp_get_default();
@@ -33,25 +33,25 @@ void displayTask(void *arg)
   static char buf[16];
 
 
-  printf("[DISPLAY] CYD - ENTERING TASK-LOOP\n");
+  printf("[DISP] CYD - ENTERING TASK-LOOP\n");
 
   while (true)
   {
     if (xQueueReceive(displayQueue, &qMesg, 40 / portTICK_RATE_MS) == pdTRUE)
     {
-      // printf("[DISPLAY] received qMesg.type=%d - ",qMesg.type);
+      // printf("[DISP] received qMesg.type=%d - ",qMesg.type);
 
       switch (qMesg.type)
       {
       case e_temperature:
-        // printf("[DISPLAY] %2.1f\n",qMesg.data.temperature / 10.0);
+        // printf("[DISP] %2.1f\n",qMesg.data.temperature / 10.0);
         break;
       case e_setpoint:
         break;
         
 
       case e_error:
-        // printf("[DISPLAY] error=%d\n",qMesg.data.error);
+        // printf("[DISP] error=%d\n",qMesg.data.error);
         break;
 
       case e_actuator:
@@ -98,7 +98,7 @@ void displayTask(void *arg)
       }
     }
 
-    // printf("[DISPLAY] lv_timer_handle()\n");
+    // printf("[DISP] lv_timer_handle()\n");
     lv_timer_handler();
 
   }

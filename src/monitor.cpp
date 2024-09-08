@@ -118,7 +118,7 @@ void initMonitor(void)
   }
 
   // create task
-  xTaskCreate(monitorTask, "monitorTask", 1 * 1024, NULL, 10, &monitorTaskHandle);
+  xTaskCreatePinnedToCore(monitorTask, "monitorTask", 1 * 1024, NULL, 10, &monitorTaskHandle, 1);
 }
 
 // end of file
