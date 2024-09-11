@@ -1,14 +1,4 @@
 [submodule "boards"]
 	path = boards
-;	url = https://github.com/rzeldent/platformio-espressif32-sunton/tree/release/2.0.9
-; url = https://github.com/rzeldent/platformio-espressif32-sunton@8c623d4
-;	url = https://github.com/rzeldent/platformio-espressif32-sunton/tree/8c623d474c41bf9288e84eeda3d4a8b268496a45
-
-
-; git submodule update –remote –merge
-
-
-; git submodule deinit boards
-; git submodule update --init --recursive
-
-  url = https://github.com/rzeldent/platformio-espressif32-sunton/tree/2.0.9
+ 	url = https://github.com/rzeldent/platformio-espressif32-sunton
+	branch = release/2.0.9
