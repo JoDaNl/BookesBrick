@@ -14,6 +14,8 @@
 #include "actuators.h"
 #include "display.h"
 
+#include "hydrobrick.h"
+
 #define LOG_TAG "main"
 
 // General TODO-list
@@ -57,6 +59,9 @@ void setup()
 
   config.inConfigMode = false;
 
+  // TEST CODE FOR HYDROBRICK GATEWAY
+  initHydroBrick();
+
   // Start all tasks
 
   //  initBlinkLed(CFG_LED_PIN);
@@ -80,6 +85,20 @@ void setup()
     initMonitor();
     delay(10);
   }
+
+
+  static hydroQMesg_t qmesg;
+
+//  qmesg.mesgId = e_msg_hydro_cmd_get_reading;
+  qmesg.mesgId = e_msg_hydro_cmd_scan_bricks;
+  qmesg.data = 0;
+
+  delay(1000);
+  
+  hydroQueueSend(&qmesg,0);
+
+
+
 
   // terminate standard 'Arduino' task
   vTaskDelete(NULL);
