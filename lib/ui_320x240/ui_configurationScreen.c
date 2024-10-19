@@ -20,7 +20,7 @@ void ui_configurationScreen_screen_init(void)
     lv_obj_set_y(ui_TitleContainer1, -109);
     lv_obj_set_align(ui_TitleContainer1, LV_ALIGN_CENTER);
     lv_obj_clear_flag(ui_TitleContainer1, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_obj_set_style_bg_color(ui_TitleContainer1, lv_color_hex(0x3333A0), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui_TitleContainer1, lv_color_hex(0x0000FF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_TitleContainer1, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_titleLabel1 = lv_label_create(ui_TitleContainer1);
@@ -28,7 +28,7 @@ void ui_configurationScreen_screen_init(void)
     lv_label_set_text(ui_titleLabel1, "CONFIGURATION");
     lv_obj_set_style_text_color(ui_titleLabel1, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_titleLabel1, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_titleLabel1, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_titleLabel1, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_tempPanel1 = lv_obj_create(ui_configurationScreen);
     lv_obj_set_width(ui_tempPanel1, 312);

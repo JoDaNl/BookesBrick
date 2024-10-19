@@ -214,7 +214,7 @@ void displayTask(void *arg)
 
   while (true)
   {
-   if (xQueueReceive(displayQueue, &qMesg, DELAY / portTICK_RATE_MS) == pdTRUE)
+   if (xQueueReceive(displayQueue, &qMesg, DELAY / portTICK_PERIOD_MS) == pdTRUE)
     {
       // printf("[DISP] received qMesg.type=%d\n", qMesg.type);
 

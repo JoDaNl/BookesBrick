@@ -8,8 +8,10 @@
 squareline/ui_320x240/autosave
 squareline/ui_320x240/backup
 squareline/ui_320x240/cache
+squareline/ui_320x240_HB/autosave
+squareline/ui_320x240_HB/backup
+squareline/ui_320x240_HB/cache
 squareline/ui_480x320/autosave
 squareline/ui_480x320/backup
 squareline/ui_480x320/cache
-squareline/ui_test
-logfile1.txt
+

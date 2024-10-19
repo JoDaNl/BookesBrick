@@ -20,8 +20,8 @@
 #define CFG_TEMP_SENSOR_TYPE_SHT4X_ENABLED      false
 
 // SENSOR SPECIFIC OPTIONS
-#define CFG_TEMP_SENSOR_SCAN_I2C                true
-#define CFG_TEMP_SENSOR_TYPE_DS18B20_CHECK_COUNTERFEIT   true
+#define CFG_TEMP_SENSOR_SCAN_I2C                          false
+#define CFG_TEMP_SENSOR_TYPE_DS18B20_CHECK_COUNTERFEIT    false
 
 // TEMPERATURE MEASUREMENT OPTIONS
 #define CFG_TEMP_PIN                    GPIO_NUM_10  // 16 = Green led on CYD
@@ -30,6 +30,9 @@
 #define CFG_TEMP_SMOOTH_NUM_SAMPLES     7             // must be odd number
 #define CFG_TEMP_SMOOTH_MAX_DEVIATION   10            // 1 degree * 10
 
+// HYDROBRICK
+// Note : CFG_ENABLE_HYDROBRICK is defined in the platformio.ini file
+#define CFG_MAX_NR_HYDROBRICKS (4)
 
 //=============================================
 
@@ -37,8 +40,8 @@
 
 //=============================================
 
-#define CFG_RELAY_TYPE_GPIO             false
-#define CFG_RELAY_TYPE_IOEXP            true
+#define CFG_RELAY_TYPE_GPIO             true
+#define CFG_RELAY_TYPE_IOEXP            false
 
 #if (CFG_RELAY_TYPE_GPIO == true)
 //#define CFG_RELAY0_PIN                  GPIO_NUM_17
@@ -85,24 +88,25 @@
 #define CFG_COMM_BBURL_API_BASE         "https://brewbricks.com/api"
 
 #define CFG_COMM_BBURL_API_IOT          "/iot/v1"
-#define CFG_COMM_BBURL_PRO_API_DEVICE   "/device"
-#define CFG_COMM_BBURL_PRO_API_DEVICES  "/devices"
+#define CFG_COMM_BBURL_PROAPI_DEVICE    "/device"
+#define CFG_COMM_BBURL_PROAPI_DEVICES   "/devices"
+#define CFG_COMM_PROAPI_INTERVAL        60  // query PRO-API every n seconds
 
 #define CFG_COMM_DEVICE_TYPE            "bookesbrick"  // do not change, impacts API result message
 #define CFG_COMM_DEVICE_BRAND           "bierbot" 
 #define CFG_COMM_DEVICE_VERSION         "0.2" 
-#define CFG_COMM_PROAPI_INTERVAL        60  // query PRO-API every n seconds
 
-#define CFG_COMM_TIMEREQUEST_INTERVAL   60
+
+#define CFG_COMM_TIMEREQUEST_INTERVAL_S (3600)
 
 #define CFG_COMM_WM_DEBUG               true
 #define cfg_COMM_WM_RESET_SETTINGS      false // TODO: CHECK
 #define CFG_COMM_WM_USE_DRD             false
-#define CFG_COMM_WM_USE_PIN             false
+#define CFG_COMM_WM_USE_PIN             TRUE
 #define CFG_COMM_WM_PORTAL_PIN          GPIO_NUM_4
 #define CFG_COMM_HOSTNAME               "bookesbrick"
 
-#define CFG_ENABLE_SCREENSHOT           true
+#define CFG_ENABLE_SCREENSHOT           false
 
 //=============================================
 
@@ -119,6 +123,7 @@
 
 //=============================================
 
+#ifdef BLBLA
 typedef enum WiFiQueueMesgType
 {
     e_cmd_start_wifi,
@@ -136,6 +141,12 @@ typedef struct WiFiQueueItem
 } WiFiQueueItem_t;
 
 
+extern void initWiFi(bool);
+extern bool checkBootConfigMode(void);
+extern void readConfig(void);
+extern int WiFiQueueSend(WiFiQueueItem_t *, TickType_t);
+#endif
+
 typedef struct configValues
 {
   bool inConfigMode;
@@ -147,10 +158,5 @@ typedef struct configValues
 } configValues_t;
 
 extern configValues_t config;
-
-extern void initWiFi(bool);
-extern bool checkBootConfigMode(void);
-extern void readConfig(void);
-extern int WiFiQueueSend(WiFiQueueItem_t *, TickType_t);
 
 #endif

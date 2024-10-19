@@ -3,12 +3,12 @@
 #define __HYDROBRICK__
 
 #include <NimBLEDevice.h>
+#include "config.h"
 
 const char HDdeviceName                     [] = "HydroBrick";
 const char HDhydrometerServiceUUID          [] = "63875899-6490-4d1b-9f0a-abee8653282c";
 const char HDhydrometerCharacteristicID     [] = "35f14e74-c1ae-4153-9abb-938481aa24cf";
 
-#define CFG_MAX_NR_HYDROBRICKS (4)
 
 typedef enum
 {
@@ -20,7 +20,7 @@ typedef struct
 {
   NimBLEAddress addresses[CFG_MAX_NR_HYDROBRICKS];
   uint8_t number;
-} scannedBricks_t;
+} hydrometerScannedBricks_t;
 
 
 typedef enum
@@ -41,7 +41,7 @@ typedef struct
 typedef union
 {
   hydrometerData_t data;
-  uint8_t bytes[sizeof(data)];
+  uint8_t bytes[sizeof(hydrometerData_t)];
 } hydrometerDataBytes_t;
 
 typedef enum hydroQMesgType
@@ -61,10 +61,10 @@ typedef struct hydroQMesg
 {
   hydroQMesgType_t mesgId;
   int16_t data;
-} hydroQMesg_t;
+} hydroQueueItem_t;
 
 
 extern void initHydroBrick(void);
-extern int hydroQueueSend(hydroQMesg_t * , TickType_t );
+extern int hydroQueueSend(hydroQueueItem_t * , TickType_t );
 
 #endif

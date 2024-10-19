@@ -308,7 +308,7 @@
                           {
                             "nid": -1989111531,
                             "strtype": "_style/Text_Font",
-                            "strval": "montserrat_18",
+                            "strval": "montserrat_14",
                             "InheritedType": 3
                           }
                         ],
@@ -368,7 +368,7 @@
                 "strtype": "OBJECT/Position",
                 "intarray": [
                   0,
-                  -109
+                  -112
                 ],
                 "InheritedType": 7
               },
@@ -378,7 +378,7 @@
                 "strtype": "OBJECT/Size",
                 "intarray": [
                   320,
-                  22
+                  16
                 ],
                 "InheritedType": 7
               },
@@ -598,9 +598,9 @@
                         "nid": 846784318,
                         "strtype": "_style/Bg_Color",
                         "intarray": [
-                          51,
-                          51,
-                          160,
+                          0,
+                          0,
+                          255,
                           255
                         ],
                         "InheritedType": 7
@@ -623,8 +623,7 @@
                 "InheritedType": 11
               }
             ],
-            "saved_objtypeKey": "CONTAINER",
-            "tree_closed": true
+            "saved_objtypeKey": "CONTAINER"
           },
           {
             "guid": "GUID62937703-575948S62133",
@@ -1943,7 +1942,7 @@
                 "strtype": "OBJECT/Position",
                 "intarray": [
                   -48,
-                  -41
+                  -51
                 ],
                 "InheritedType": 7
               },
@@ -3541,7 +3540,7 @@
                 "strtype": "OBJECT/Position",
                 "intarray": [
                   110,
-                  -67
+                  -77
                 ],
                 "InheritedType": 7
               },
@@ -3825,8 +3824,7 @@
                 "InheritedType": 11
               }
             ],
-            "saved_objtypeKey": "PANEL",
-            "tree_closed": true
+            "saved_objtypeKey": "PANEL"
           },
           {
             "guid": "GUID46152399-595488S64033",
@@ -5416,7 +5414,7 @@
                 "strtype": "OBJECT/Position",
                 "intarray": [
                   110,
-                  -15
+                  -25
                 ],
                 "InheritedType": 7
               },
@@ -5776,7 +5774,7 @@
                     "strtype": "OBJECT/Size",
                     "intarray": [
                       270,
-                      60
+                      80
                     ],
                     "InheritedType": 7
                   },
@@ -6235,7 +6233,7 @@
                 "strtype": "OBJECT/Position",
                 "intarray": [
                   0,
-                  50
+                  47
                 ],
                 "InheritedType": 7
               },
@@ -6245,7 +6243,7 @@
                 "strtype": "OBJECT/Size",
                 "intarray": [
                   310,
-                  72
+                  89
                 ],
                 "InheritedType": 7
               },
@@ -7270,7 +7268,7 @@
                         "strtype": "OBJECT/Size",
                         "intarray": [
                           40,
-                          14
+                          10
                         ],
                         "InheritedType": 7
                       },
@@ -12923,7 +12921,7 @@
                           {
                             "nid": -1735102106,
                             "strtype": "_style/Text_Font",
-                            "strval": "montserrat_18",
+                            "strval": "montserrat_14",
                             "InheritedType": 3
                           }
                         ],
@@ -13213,9 +13211,9 @@
                         "nid": 849711615,
                         "strtype": "_style/Bg_Color",
                         "intarray": [
-                          51,
-                          51,
-                          160,
+                          0,
+                          0,
+                          255,
                           255
                         ],
                         "InheritedType": 7
@@ -15869,7 +15867,7 @@
     "theme_color1": 5,
     "theme_color2": 0,
     "uiExportFolderPath": "...\\..\\..\\lib\\ui_320x240",
-    "projectExportFolderPath": "",
+    "projectExportFolderPath": "...\\..\\..\\lib\\ui_320x240",
     "backup_cnt": 318,
     "autosave_cnt": 0,
     "lvgl_version": "8.3.6",

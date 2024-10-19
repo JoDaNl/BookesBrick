@@ -48,7 +48,7 @@ void displayTask(void *arg)
 {
   static displayQueueItem_t qMesg;
   static char buf[16];
-  static const int msToWait = 500 / portTICK_RATE_MS;
+  static const int msToWait = 500 / portTICK_PERIOD_MS;
 
   lcd.init();
 
@@ -60,14 +60,14 @@ void displayTask(void *arg)
   lcd.print("Bookes Beer");
   lcd.setCursor(3, 1);
   lcd.print("Automation");
-  vTaskDelay(2000 / portTICK_RATE_MS);
+  vTaskDelay(2000 / portTICK_PERIOD_MS);
 
   lcd.clear();
   lcd.setCursor(4, 0);
   lcd.print("Supports");
   lcd.setCursor(3, 1);
   lcd.print("Bierbot (c)");
-  vTaskDelay(2000 / portTICK_RATE_MS);
+  vTaskDelay(2000 / portTICK_PERIOD_MS);
 
   lcdHelper();
 
@@ -86,7 +86,7 @@ void displayTask(void *arg)
         lcd.printf(buf);
         break;
       case e_setpoint:
-        printf("[DISP] setPoint=%d\n",qMesg.data.temperature);
+        // printf("[DISP] setPoint=%d\n",qMesg.data.temperature);
         lcd.setCursor(6, 1);
         sprintf(buf, "%2.1f", qMesg.data.temperature / 10.0);
         lcd.printf(buf);
@@ -97,7 +97,7 @@ void displayTask(void *arg)
       //   lcd.setCursor(0, 0);
       //   lcd.printf("SSID:%s", qMesg.data.wifiSSID);
       //   lcd.printf("IP  :%s", qMesg.data.wifiIP);
-      //   vTaskDelay(qMesg.duration * 1000 / portTICK_RATE_MS);
+      //   vTaskDelay(qMesg.duration * 1000 / portTICK_PERIOD_MS);
       //   lcdHelper();
       //   break;
 

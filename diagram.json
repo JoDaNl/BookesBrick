@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "author": "Quynh Thuy",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "board-esp32-devkit-c-v4",
+      "id": "esp",
+      "top": 477.2,
+      "left": 34.16,
+      "rotate": 90,
+      "attrs": {}
+    },
+    {
+      "type": "board-ili9341-cap-touch",
+      "id": "lcd2",
+      "top": 394.36,
+      "left": 210.82,
+      "rotate": 90,
+      "attrs": {}
+    }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+    [ "esp:5V", "lcd2:VCC", "red", [ "h47.85", "v268.8", "h67.2" ] ],
+    [ "esp:GND.2", "lcd2:GND", "black", [ "v0", "h-28.8", "v105.6", "h249.6" ] ],
+    [ "esp:15", "lcd2:CS", "green", [ "v0", "h-38.4", "v259.2", "h268.8" ] ],
+    [ "esp:25", "lcd2:RST", "green", [ "v0", "h38.25", "v201.6", "h105.6" ] ],
+    [ "esp:2", "lcd2:D/C", "green", [ "h-48", "v268.8", "h288" ] ],
+    [ "esp:13", "lcd2:MOSI", "green", [ "h57.45", "v278.4", "h105.6" ] ],
+    [ "esp:14", "lcd2:SCK", "green", [ "h28.65", "v259.2", "h144" ] ],
+    [ "esp:21", "lcd2:LED", "green", [ "h-57.6", "v211.2", "h336" ] ],
+    [ "esp:12", "lcd2:MISO", "green", [ "v0", "h19.05", "v288", "h172.8" ] ]
+  ],
+  "dependencies": {}
+}

@@ -14,7 +14,10 @@ typedef enum displayQueueDataType
     e_time,
     e_heartbeat,
     e_error,
-    e_display_text
+    e_display_text,
+    e_specific_gravity,
+    e_hb_temperature,
+    e_voltage
 } displayQueueDataType_t;
 
 typedef enum displayMessageType
@@ -44,6 +47,8 @@ typedef union displayQueueData
   uint16_t compDelay;
   uint16_t time;
   uint16_t heartBeat;
+  uint16_t specificGravity;
+  uint16_t voltage;
   displayTextData_t textData;
   displayWiFiData_t wifiData;
 } displayQueueData_t;
@@ -56,9 +61,11 @@ typedef struct displayQueueItem
   uint8_t number;
 } displayQueueItem_t;
 
-extern xQueueHandle displayQueue;
-extern void displayTask(void *);
+
 extern int displayQueueSend(displayQueueItem_t *, TickType_t);
 extern void initDisplay(void);
+extern void initLVGL(void);
+extern void updateLVGL(void);
+
 extern void displayText(String *, displayMessageType_t, uint8_t);
 #endif

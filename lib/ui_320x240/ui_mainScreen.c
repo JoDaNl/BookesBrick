@@ -15,12 +15,12 @@ void ui_mainScreen_screen_init(void)
     ui_TitleContainer = lv_obj_create(ui_mainScreen);
     lv_obj_remove_style_all(ui_TitleContainer);
     lv_obj_set_width(ui_TitleContainer, 320);
-    lv_obj_set_height(ui_TitleContainer, 22);
+    lv_obj_set_height(ui_TitleContainer, 16);
     lv_obj_set_x(ui_TitleContainer, 0);
-    lv_obj_set_y(ui_TitleContainer, -109);
+    lv_obj_set_y(ui_TitleContainer, -112);
     lv_obj_set_align(ui_TitleContainer, LV_ALIGN_CENTER);
     lv_obj_clear_flag(ui_TitleContainer, LV_OBJ_FLAG_SCROLLABLE);      /// Flags
-    lv_obj_set_style_bg_color(ui_TitleContainer, lv_color_hex(0x3333A0), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui_TitleContainer, lv_color_hex(0x0000FF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_TitleContainer, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_titleLabel = lv_label_create(ui_TitleContainer);
@@ -28,13 +28,13 @@ void ui_mainScreen_screen_init(void)
     lv_label_set_text(ui_titleLabel, "BOOKES BRICK");
     lv_obj_set_style_text_color(ui_titleLabel, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_titleLabel, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui_titleLabel, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui_titleLabel, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
 
     ui_tempPanel = lv_obj_create(ui_mainScreen);
     lv_obj_set_width(ui_tempPanel, 215);
     lv_obj_set_height(ui_tempPanel, 100);
     lv_obj_set_x(ui_tempPanel, -48);
-    lv_obj_set_y(ui_tempPanel, -41);
+    lv_obj_set_y(ui_tempPanel, -51);
     lv_obj_set_align(ui_tempPanel, LV_ALIGN_CENTER);
     lv_obj_clear_flag(ui_tempPanel, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE |
                       LV_OBJ_FLAG_SCROLLABLE);     /// Flags
@@ -93,7 +93,7 @@ void ui_mainScreen_screen_init(void)
     lv_obj_set_width(ui_setpointPanel, 90);
     lv_obj_set_height(ui_setpointPanel, 48);
     lv_obj_set_x(ui_setpointPanel, 110);
-    lv_obj_set_y(ui_setpointPanel, -67);
+    lv_obj_set_y(ui_setpointPanel, -77);
     lv_obj_set_align(ui_setpointPanel, LV_ALIGN_CENTER);
     lv_obj_clear_flag(ui_setpointPanel, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE |
                       LV_OBJ_FLAG_SCROLLABLE);     /// Flags
@@ -151,7 +151,7 @@ void ui_mainScreen_screen_init(void)
     lv_obj_set_width(ui_coolHeatPanel, 90);
     lv_obj_set_height(ui_coolHeatPanel, 48);
     lv_obj_set_x(ui_coolHeatPanel, 110);
-    lv_obj_set_y(ui_coolHeatPanel, -15);
+    lv_obj_set_y(ui_coolHeatPanel, -25);
     lv_obj_set_align(ui_coolHeatPanel, LV_ALIGN_CENTER);
     lv_obj_clear_flag(ui_coolHeatPanel, LV_OBJ_FLAG_CLICKABLE | LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE |
                       LV_OBJ_FLAG_SCROLLABLE);     /// Flags
@@ -230,9 +230,9 @@ void ui_mainScreen_screen_init(void)
 
     ui_infoPanel = lv_obj_create(ui_mainScreen);
     lv_obj_set_width(ui_infoPanel, 310);
-    lv_obj_set_height(ui_infoPanel, 72);
+    lv_obj_set_height(ui_infoPanel, 89);
     lv_obj_set_x(ui_infoPanel, 0);
-    lv_obj_set_y(ui_infoPanel, 50);
+    lv_obj_set_y(ui_infoPanel, 47);
     lv_obj_set_align(ui_infoPanel, LV_ALIGN_CENTER);
     lv_obj_clear_flag(ui_infoPanel, LV_OBJ_FLAG_PRESS_LOCK | LV_OBJ_FLAG_CLICK_FOCUSABLE |
                       LV_OBJ_FLAG_SCROLLABLE);      /// Flags
@@ -248,7 +248,7 @@ void ui_mainScreen_screen_init(void)
 
     ui_temperatureChart = lv_chart_create(ui_infoPanel);
     lv_obj_set_width(ui_temperatureChart, 270);
-    lv_obj_set_height(ui_temperatureChart, 60);
+    lv_obj_set_height(ui_temperatureChart, 80);
     lv_obj_set_x(ui_temperatureChart, 10);
     lv_obj_set_y(ui_temperatureChart, 1);
     lv_obj_set_align(ui_temperatureChart, LV_ALIGN_CENTER);
@@ -307,7 +307,7 @@ void ui_mainScreen_screen_init(void)
     ui_backendBar = lv_bar_create(ui_backendContainer);
     lv_bar_set_range(ui_backendBar, 1, 100);
     lv_obj_set_width(ui_backendBar, 40);
-    lv_obj_set_height(ui_backendBar, 14);
+    lv_obj_set_height(ui_backendBar, 10);
     lv_obj_set_align(ui_backendBar, LV_ALIGN_CENTER);
     lv_obj_set_style_bg_color(ui_backendBar, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui_backendBar, 255, LV_PART_MAIN | LV_STATE_DEFAULT);

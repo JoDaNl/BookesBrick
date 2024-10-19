@@ -4,19 +4,25 @@
 
 // Includes
 #include <Arduino.h>
+#include "esp_log.h"
 #include "config.h"
 #include "controller.h"
 // #include "blinkled.h"
 #include "wifiman.h"
 #include "comms.h"
 #include "sensors.h"
-#include "monitor.h"
+// #include "monitor.h"
 #include "actuators.h"
 #include "display.h"
 
+#if (CFG_ENABLE_HYDROBRICK == true)
 #include "hydrobrick.h"
+#endif
 
-#define LOG_TAG "main"
+#define LOG_TAG "MAIN"
+
+// Config struct
+configValues_t config;
 
 // General TODO-list
 // - go into condig mode when there is no SSID/PWD stored in filesystem
@@ -33,10 +39,6 @@
 
 void setup()
 {
-  // Immediately set outputs/actuators to non-active
-  // this to prevent unwatend heating/cooling after a reboot
-  powerUpActuators();
-
   Serial.begin(CFG_BAUDRATE);
 
   while (!Serial) // wait for Serial to become available
@@ -46,9 +48,28 @@ void setup()
 
   // Welcome message
   ESP_LOGI(LOG_TAG, "");
-  ESP_LOGI(LOG_TAG, "========================");
-  ESP_LOGI(LOG_TAG, "[MAIN] Started !!!\n");
-  ESP_LOGI(LOG_TAG, "========================");
+  ESP_LOGI(LOG_TAG, "==========================");
+  ESP_LOGI(LOG_TAG, "    BookesBrick Started");
+  ESP_LOGI(LOG_TAG, "==========================");
+  ESP_LOGI(LOG_TAG, "");
+
+  ESP_LOGI(LOG_TAG, "start setup: %d, free: %d\n", ESP.getHeapSize(), ESP.getFreeHeap());
+  ESP_LOGI(LOG_TAG, "ESP.getSdkVersion()=%s", ESP.getSdkVersion());
+
+  // Immediately set outputs/actuators to non-active
+  // this to prevent unwatend heating/cooling after a reboot
+  powerUpActuators();
+
+#ifdef BOARD_HAS_RGB_LED
+  pinMode(RGB_LED_R, OUTPUT);
+  pinMode(RGB_LED_G, OUTPUT);
+  pinMode(RGB_LED_B, OUTPUT);
+#endif
+
+
+  // FOR DEBUG ONLY !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#include "../../../_config/myconfig.h" 
+  // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   // pinMode(GPIO_NUM_7, OUTPUT);
 
@@ -57,50 +78,37 @@ void setup()
   config.inConfigMode = checkBootConfigMode();
 #endif
 
-  config.inConfigMode = false;
-
-  // TEST CODE FOR HYDROBRICK GATEWAY
-  initHydroBrick();
+  //  config.inConfigMode = false;
 
   // Start all tasks
 
-  //  initBlinkLed(CFG_LED_PIN);
-  delay(10);
   initDisplay();
-  delay(10);
-  initWiFi(config.inConfigMode);
+  ESP_LOGI(LOG_TAG, "initDisplay done: %d, free: %d", ESP.getHeapSize(), ESP.getFreeHeap());
+
+  delay(100);
+  initCommmunication();
+  ESP_LOGI(LOG_TAG, "initCommunication done: %d, free: %d", ESP.getHeapSize(), ESP.getFreeHeap());
+
+#if (CFG_ENABLE_HYDROBRICK == true)
+  delay(100);
+  initHydroBrick();
+  ESP_LOGI(LOG_TAG, "initHydroBrick done: %d, free: %d", ESP.getHeapSize(), ESP.getFreeHeap());
+#endif
+
   delay(10);
   initController();
+  ESP_LOGI(LOG_TAG, "initController done: %d, free: %d", ESP.getHeapSize(), ESP.getFreeHeap());
+
   delay(10);
+  initSensors();
+  ESP_LOGI(LOG_TAG, "initSensors done: %d, free: %d", ESP.getHeapSize(), ESP.getFreeHeap());
 
-  if (~config.inConfigMode)
-  {
-    delay(10);
-    initSensors();
-    delay(10);
-    initCommmunication();
-    delay(10);
-    initActuators();
-    delay(10);
-    initMonitor();
-    delay(10);
-  }
-
-
-  static hydroQMesg_t qmesg;
-
-//  qmesg.mesgId = e_msg_hydro_cmd_get_reading;
-  qmesg.mesgId = e_msg_hydro_cmd_scan_bricks;
-  qmesg.data = 0;
-
-  delay(1000);
-  
-  hydroQueueSend(&qmesg,0);
-
-
-
+  delay(10);
+  initActuators();
+  ESP_LOGI(LOG_TAG, "initActuators done: %d, free: %d", ESP.getHeapSize(), ESP.getFreeHeap());
 
   // terminate standard 'Arduino' task
+  delay(10);
   vTaskDelete(NULL);
 };
 

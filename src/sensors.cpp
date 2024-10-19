@@ -2,13 +2,13 @@
 //  sensors.cpp
 //
 
-
-
 #include <Arduino.h>
 #include "config.h"
 #include "smooth.h"
 #include "sensors.h"
 #include "controller.h"
+
+#define LOG_TAG "SENS"
 
 // SENSOR SPECIFIC INCLUDES
 
@@ -33,16 +33,15 @@ using namespace CheckDS18B20;
 #include <SensirionI2cSht4x.h>
 #endif
 
-
 // Loop delay
 #define DELAY (1000)
 
 // Queues
-static xQueueHandle sensorsQueue = NULL;
+//static QueueHandle_t sensorsQueue = NULL;
+static QueueHandle_t sensorsQueue = NULL;
 
 // Sensors task-handle
 static TaskHandle_t sensorsTaskHandle = NULL;
-
 
 #ifdef BLABLA
 #if (CFG_TEMP_SENSOR_SCAN_I2C == true)
@@ -51,7 +50,7 @@ void scanI2Cbus(void)
   byte error, address;
   int nDevices;
 
-  printf("[I2C] Scanning...\n");
+  ESP_LOGI(LOG_TAG, "I2C scanning");
 
   nDevices = 0;
   for (address = 1; address < 127; address++)
@@ -64,22 +63,22 @@ void scanI2Cbus(void)
 
     if (error == 0)
     {
-      printf("[I2C] device found at address 0x%02X\n", address);
+      ESP_LOGI(LOG_TAG, "I2C device found at address 0x%02X", address);
       nDevices++;
     }
     else if (error == 4)
     {
-      printf("[I2C] Unknown error at address 0x%02X\n", address);
+      ESP_LOGI(LOG_TAG, "I2CUnknown error at address 0x%02X", address);
     }
   }
 
   if (nDevices == 0)
   {
-    Serial.println("[I2C] No I2C devices found\n");
+    ESP_LOGI(LOG_TAG, "No I2C devices found");
   }
   else
   {
-    Serial.println("[I2C] done\n");
+    ESP_LOGI(LOG_TAG, "I2C scanning done");
   }
 }
 #endif // CFG_TEMP_SENSOR_SCAN_I2C
@@ -103,7 +102,7 @@ public:
     tempInCelcius = false;
   };
 
-  bool getTemperature(float & temperature)
+  bool getTemperature(float &temperature)
   {
     temperature = -127;
     return true;
@@ -122,14 +121,13 @@ public:
     return true;
   }
 
-  bool getTemperature(float & temperature)
+  bool getTemperature(float &temperature)
   {
     temperature = 5.0 + rand() * 30.0 / RAND_MAX;
     return true;
   }
 };
 #endif
-
 
 #if (CFG_TEMP_SENSOR_TYPE_DS18B20_ENABLED == true)
 class temperatureSensorDS18B20 : public temperatureSensorBase
@@ -146,16 +144,15 @@ private:
 
     result = CheckDS18B20::ds18b20_family(&oneWire, 0);
 
-    printf("[DS18B20] ");
     if (result == CheckDS18B20::FAMILY_A1)
     {
-      printf("ORIGINAL");
+      ESP_LOGI(LOG_TAG, "DS18B20 Original device");
     }
     else
     {
-      printf("COUNTERFEIT\n");
+      ESP_LOGE(LOG_TAG, "DS18B20 Counterfeit device");
+
     }
-    printf(" DS18D20 DETECTED !!!\n");
   }
 #endif
 
@@ -175,14 +172,14 @@ public:
     millisForConversion = sensors.millisToWaitForConversion();
     numSensors = sensors.getDS18Count();
 
-    printf("[SENSORS] Number of DS18B20 sensors found=%d\n", numSensors);
+    ESP_LOGI(LOG_TAG, "Number of DS18B20 sensors found=%d", numSensors);
 
     if (numSensors > 0)
     {
       status = true;
 
-      printf("[SENSORS] isParasitePowerMode()=%d\n", sensors.isParasitePowerMode());
-      printf("[SENSORS] millisToWaitForConversion()=%d\n", millisForConversion);
+      ESP_LOGI(LOG_TAG, "isParasitePowerMode()=%d\n", sensors.isParasitePowerMode());
+      ESP_LOGI(LOG_TAG, "millisToWaitForConversion()=%d\n", millisForConversion);
 
 #if (CFG_TEMP_SENSOR_TYPE_DS18B20_CHECK_COUNTERFEIT == true)
       checkDS18B20Counterfeit();
@@ -192,7 +189,7 @@ public:
     return status;
   };
 
-  bool getTemperature(float & temperature)
+  bool getTemperature(float &temperature)
   {
     bool status;
 
@@ -202,11 +199,10 @@ public:
     if (numSensors > 0)
     {
       sensors.requestTemperaturesByIndex(0);
-      vTaskDelay(sensors.millisToWaitForConversion() / portTICK_RATE_MS);
+      vTaskDelay(sensors.millisToWaitForConversion() / portTICK_PERIOD_MS);
 
 #ifdef CFG_TEMP_IN_CELCIUS
       temperature = sensors.getTempCByIndex(0);
-      // printf("[SENSORS] getTempCByIndex(0)=%f2.1\n",tempSens);
       status = (temperature != DEVICE_DISCONNECTED_C);
 #elif CFG_TEMP_IN_FARENHEID
       temperature = sensors.getTempFByIndex(0);
@@ -217,7 +213,6 @@ public:
   }
 };
 #endif
-
 
 #if (CFG_TEMP_SENSOR_TYPE_SHT3X_ENABLED == true)
 class temperatureSensorSHT3x : public temperatureSensorBase
@@ -234,18 +229,18 @@ public:
 #if (defined CFG_I2C_SDA && defined CFG_I2C_SCL)
     Wire.begin(CFG_I2C_SDA, CFG_I2C_SCL);
 #else
-    Wire.begin();    
+    Wire.begin();
 #endif
     sensor.begin(Wire, SHT30_I2C_ADDR_44);
     sensor.stopMeasurement();
-    vTaskDelay(1 / portTICK_RATE_MS);
+    vTaskDelay(1 / portTICK_PERIOD_MS);
     status = (sensor.softReset() == 0);
-    vTaskDelay(100 / portTICK_RATE_MS);
+    vTaskDelay(100 / portTICK_PERIOD_MS);
 
     return status;
   }
 
-  bool getTemperature(float& temperature)
+  bool getTemperature(float &temperature)
   {
     static bool status;
     static int16_t error;
@@ -254,10 +249,10 @@ public:
     status = false;
 
     error = sensor.measureSingleShot(REPEATABILITY_MEDIUM, false, temperature, humidity);
-    if (error != NO_ERROR) 
+    if (error != NO_ERROR)
     {
-        errorToString(error, errorMessage, sizeof errorMessage);
-        printf("[SENSOR] Sensor error: %s\n",errorMessage);     
+      errorToString(error, errorMessage, sizeof errorMessage);
+      ESP_LOGE(LOG_TAG, "Sensor error: %s", errorMessage);
     }
     else
     {
@@ -268,7 +263,6 @@ public:
   }
 };
 #endif
-
 
 #if (CFG_TEMP_SENSOR_TYPE_SHT4X_ENABLED == true)
 class temperatureSensorSHT4x : public temperatureSensorBase
@@ -286,28 +280,28 @@ public:
 #if (defined CFG_I2C_SDA && defined CFG_I2C_SCL)
     Wire.begin(CFG_I2C_SDA, CFG_I2C_SCL);
 #else
-    Wire.begin();    
+    Wire.begin();
 #endif
 
     sensor.begin(Wire, SHT30_I2C_ADDR_44);
     status = (sensor.softReset() == 0);
-    vTaskDelay(10 / portTICK_RATE_MS);
+    vTaskDelay(10 / portTICK_PERIOD_MS);
 
     return status;
   }
 
-  bool getTemperature(float & temperature)
+  bool getTemperature(float &temperature)
   {
     static bool status;
     static float humidity;
 
     status = false;
-    
+
     error = sensor.measureHighPrecision(temperature, humidity);
-    if (error != NO_ERROR) 
+    if (error != NO_ERROR)
     {
-        errorToString(error, errorMessage, sizeof errorMessage);
-        printf("[SENSOR] Sensor error: %s\n",errorMessage);     
+      errorToString(error, errorMessage, sizeof errorMessage);
+      ESP_LOGE(LOG_TAG, "Sensor error: %s", errorMessage);
     }
     else
     {
@@ -318,7 +312,6 @@ public:
   }
 };
 #endif
-
 
 // ============================================================================
 // SENSORS TASK
@@ -340,7 +333,7 @@ static void sensorsTask(void *arg)
   static temperatureSensorDS18B20 sensor;
 #elif (CFG_TEMP_SENSOR_TYPE_SHT3X_ENABLED == true)
   static temperatureSensorSHT3x sensor;
-#elif (CFG_TEMP_SENSOR_TYPE_SHT4X_ENABLED == true)  
+#elif (CFG_TEMP_SENSOR_TYPE_SHT4X_ENABLED == true)
   static temperatureSensorSHT4x sensor;
 #else
 
@@ -359,7 +352,7 @@ static void sensorsTask(void *arg)
     if ((tempInitValid == false) || (tempSensValid == false))
     {
       tempInitValid = sensor.init();
-      printf("[SENSORS] TEMPERATURE SENSOR INIT : %d\n",tempInitValid);
+      ESP_LOGI(LOG_TAG,"Temp sensor init: %d", tempInitValid);
     }
 
     // If there is a sensor initialised --> Measure temperature
@@ -380,7 +373,7 @@ static void sensorsTask(void *arg)
       }
       else
       {
-        printf("[SENSORS] INVALID TEMPERATURE MEASUREMENT\n");
+        ESP_LOGE(LOG_TAG,"Invbalid temperature measurement");
       }
     }
 
@@ -388,10 +381,11 @@ static void sensorsTask(void *arg)
     qControllerMesg.type = e_mtype_sensor;
     qControllerMesg.mesg.sensorMesg.mesgId = e_msg_sensor_temperature;
     qControllerMesg.mesg.sensorMesg.data = tempSmooth;
-    qControllerMesg.valid = (tempSensValid & tempSmoothValid);  // both valids must be true !
+    qControllerMesg.valid = (tempSensValid & tempSmoothValid); // both valids must be true !
     controllerQueueSend(&qControllerMesg, 0);
 
-    vTaskDelay(DELAY / portTICK_RATE_MS);
+    // vTaskDelay(DELAY / portTICK_PERIOD_MS);
+    vTaskDelay(DELAY / portTICK_PERIOD_MS);
   }
 }
 
@@ -411,7 +405,9 @@ int sensorsQueueSend(uint8_t *sensorsQMesg, TickType_t xTicksToWait)
 
 void initSensors(void)
 {
-  printf("[SENSORS] init\n");
+  int r;
+
+  ESP_LOGI(LOG_TAG, "init");
 
   // scanI2Cbus();
 
@@ -419,11 +415,16 @@ void initSensors(void)
 
   if (sensorsQueue == 0)
   {
-    printf("[SENSORS] Cannot create sensorsQueue. This is FATAL\n");
+    ESP_LOGE(LOG_TAG, "Cannot create sensorsQueue");
   }
 
   // create task
-  xTaskCreatePinnedToCore(sensorsTask, "sensorsTask", 2 * 1024, NULL, 10, &sensorsTaskHandle, 1);
+  r = xTaskCreatePinnedToCore(sensorsTask, "sensorsTask", 2 * 1024, NULL, 10, &sensorsTaskHandle, 1);
+
+  if (r != pdPASS)
+  {
+    ESP_LOGE(LOG_TAG, "Could not create task, error-code=%d", r);
+  }
 }
 
 // end of file

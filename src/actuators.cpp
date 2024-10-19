@@ -14,14 +14,17 @@ TCA9555 TCA(0x20);
 #include "actuators.h"
 #include "controller.h"
 
-#define LOG_TAG "ACTUATORS"
+#define LOG_TAG "ACTS"
 
 // GLOBALS
-static xQueueHandle actuatorsQueue = NULL;
+// static QueueHandle_t actuatorsQueue = NULL;
+static QueueHandle_t actuatorsQueue = NULL;
+static TaskHandle_t actuatorsTaskHandle = NULL;
 
 static void setActuator(uint8_t number, uint8_t onOff)
 {
   static bool pinModeNotSet = true;
+
   uint8_t pin;
   uint8_t onLevel;
   bool valid;
@@ -46,7 +49,7 @@ static void setActuator(uint8_t number, uint8_t onOff)
     Wire.begin(CFG_I2C_SDA, CFG_I2C_SCL);
     Wire.setClock(50000);
 
-    printf("BEGIN=%d\n",TCA.begin());
+    ESP_LOGD(LOG_TAG,"BEGIN=%d\n",TCA.begin());
 
     // TODO : check TCA result & send error message in case no IO-expander is detected
 
@@ -91,7 +94,6 @@ static void setActuator(uint8_t number, uint8_t onOff)
 #if (CFG_RELAY_TYPE_IOEXP == true)
     TCA.write1(pin, onLevel); 
 #endif
-    printf("[ACTS] digitalWrite(%d, %d)\n",pin, onLevel);    
     ESP_LOGI(LOG_TAG,"digitalWrite(%d, %d)",pin, onLevel);
   }
 }
@@ -110,18 +112,17 @@ void powerUpActuators(void)
 
 static void actuatorsTask(void *arg)
 {
-  static actuatorQueueItem_t actuatorMesg;
-  static controllerQItem_t controllerMsg;
+  actuatorQueueItem_t actuatorMesg;
+  controllerQItem_t controllerMsg;
 
-  // TODO : use arrays...you know how to..!
-  static uint8_t actuatorReqeuest0;
-  static uint8_t actuatorReqeuest1;
-  static uint8_t actuatorActual0;
-  static uint8_t actuatorActual1;
-  static uint16_t onDelaySec0;
-  static uint16_t onDelaySec1;
-  static uint16_t offDelaySec0;
-  static uint16_t offDelaySec1;
+  uint8_t actuatorReqeuest0;
+  uint8_t actuatorReqeuest1;
+  uint8_t actuatorActual0;
+  uint8_t actuatorActual1;
+  uint16_t onDelaySec0;
+  uint16_t onDelaySec1;
+  uint16_t offDelaySec0;
+  uint16_t offDelaySec1;
 
   // INIT DELAYS
   // we also could start the task loop with all delays initially zero,
@@ -140,9 +141,9 @@ static void actuatorsTask(void *arg)
   while (true)
   {
     // get message from queue
-    if (xQueueReceive(actuatorsQueue, &actuatorMesg, 1000 / portTICK_RATE_MS) == pdTRUE)
+    // if (xQueueReceive(actuatorsQueue, &actuatorMesg, 1000 / portTICK_PERIOD_MS) == pdTRUE)
+    if (xQueueReceive(actuatorsQueue, &actuatorMesg, 1000 / portTICK_PERIOD_MS) == pdTRUE)
     {
-      printf("[ACTS] received qMesg.data=%d\n", actuatorMesg.data);
       ESP_LOGI(LOG_TAG,"received qMesg.data=%d", actuatorMesg.data);
       actuatorReqeuest0 = actuatorMesg.data & 1;
       actuatorReqeuest1 = (actuatorMesg.data >> 1) & 1;
@@ -301,21 +302,23 @@ int actuatorsQueueSend(actuatorQueueItem_t * actuatorQMesg, TickType_t xTicksToW
 
 void initActuators(void)
 {
-  static TaskHandle_t actuatorsTaskHandle = NULL;
-
-  // printf("[ACTS] init\n");
+  int r;
   ESP_LOGI(LOG_TAG,"initActuators()");
 
   actuatorsQueue = xQueueCreate(5, sizeof(actuatorQueueItem_t));
 
   if (actuatorsQueue == 0)
   {
-    // printf("[ACTS] Cannot create actuatorsQueue. This is FATAL\n");
     ESP_LOGE(LOG_TAG,"Cannot create actuatorsQueue. This is FATAL");
   }
 
   // create task
-  xTaskCreatePinnedToCore(actuatorsTask, "actuatorsTask", 4 * 1024, NULL, 10, &actuatorsTaskHandle, 1);
+  r = xTaskCreatePinnedToCore(actuatorsTask, "actuatorsTask", 1 * 1024, NULL, 10, &actuatorsTaskHandle, 1);
+
+  if (r != pdPASS)
+  {
+    ESP_LOGE(LOG_TAG, "Could not create task, error-code=%d", r);
+  }
 }
 
 // end of file
