@@ -130,7 +130,7 @@ void controllerTask(void *arg)
   // static blinkLedQMesg_t      blinkLedQMesg;
   actuatorQueueItem_t actuatorsQMesg;
   displayQueueItem_t displayQMesg;
-//  static WiFiQueueItem_t WiFIQMesg;
+  //  static WiFiQueueItem_t WiFIQMesg;
   commsQueueItem_t commsQMesg;
 
 #if (CFG_ENABLE_HYDROBRICK == true)
@@ -143,8 +143,8 @@ void controllerTask(void *arg)
   printf("Heap Size (initController 4): %d, free: %d\n", ESP.getHeapSize(), ESP.getFreeHeap());
 
   // Start WiFi
-//  WiFIQMesg.mesgId = e_cmd_start_wifi;
-//  WiFiQueueSend(&WiFIQMesg, 0);
+  //  WiFIQMesg.mesgId = e_cmd_start_wifi;
+  //  WiFiQueueSend(&WiFIQMesg, 0);
 
   String *welcome = new String("Welcome !");
   displayText(welcome, e_status_bar, 10);
@@ -159,9 +159,13 @@ void controllerTask(void *arg)
   displayTimeTimer = xTimerCreate("ntp", NTPCallTimeMS / portTICK_PERIOD_MS, pdTRUE, 0, displayTimeCallback); // Autoreload
   xTimerStart(displayTimeTimer, 0);
 
-  IOTAPICallTimeMS = 200000;
+  IOTAPICallTimeMS = 5000;
   IOTAPITimer = xTimerCreate("iotapi", IOTAPICallTimeMS / portTICK_PERIOD_MS, pdFAIL, 0, IOTAPITimerCallback); // One-shot
   xTimerStart(IOTAPITimer, 0);
+
+  PROAPICallTimeMS = 10000;
+  PROAPITimer = xTimerCreate("proapi", PROAPICallTimeMS / portTICK_PERIOD_MS, pdFAIL, 0, PROAPITimerCallback); // One-shot
+  xTimerStart(PROAPITimer, 0);
 
 #if (CFG_ENABLE_HYDROBRICK == true)
   hydroCallTimeMS = 4000; // initial time
@@ -182,7 +186,7 @@ void controllerTask(void *arg)
 #if (CFG_ENABLE_HYDROBRICK == true)
         case e_msg_timer_hydro:
           // timer has triggered, we must now read the hydrometer
-          ESP_LOGI(LOG_TAG,"e_msg_timer_hydro");
+          ESP_LOGI(LOG_TAG, "e_msg_timer_hydro");
 
           // EXPERIMENTAL : switch off wifi
           // printf("Deinitialised Wifi 1\n");
@@ -201,7 +205,7 @@ void controllerTask(void *arg)
           break;
 #endif
         case e_msg_timer_iotapi:
-          ESP_LOGI(LOG_TAG,"e_msg_timer_iotapi");
+          ESP_LOGI(LOG_TAG, "e_msg_timer_iotapi");
           if (temperatureValid)
           {
             // send temperature to communication task
@@ -219,11 +223,25 @@ void controllerTask(void *arg)
           break;
 
         case e_msg_timer_proapi:
+          ESP_LOGI(LOG_TAG, "e_msg_timer_proapi");
+          if (temperatureValid)
+          {
+            // send temperature to communication task
+            commsQMesg.type = e_type_comms_proapi;
+            commsQMesg.valid = true;
+            communicationQueueSend(&commsQMesg, 0);
+          }
+          else
+          {
+            // restart timer / retry in 1 second
+            xTimerChangePeriod(IOTAPITimer, 1000 / portTICK_PERIOD_MS, 0);
+            xTimerStart(IOTAPITimer, 0);
+          }
           break;
 
         case e_msg_timer_ntp:
           // timer has triggered, we must now get accurate time using NTP
-          ESP_LOGI(LOG_TAG,"e_msg_timer_ntp");
+          ESP_LOGI(LOG_TAG, "e_msg_timer_ntp");
           commsQMesg.type = e_type_comms_ntp;
           commsQMesg.valid = true;
           communicationQueueSend(&commsQMesg, 0);
@@ -253,7 +271,7 @@ void controllerTask(void *arg)
           break;
 
         case e_msg_sensor_temperature:
-          ESP_LOGI(LOG_TAG, "received e_msg_sensor_temperature, data=%d", qMesgRecv.mesg.sensorMesg.data);
+          ESP_LOGD(LOG_TAG, "received e_msg_sensor_temperature, data=%d", qMesgRecv.mesg.sensorMesg.data);
 
           // send temperature to communication task
           temperature_x10 = qMesgRecv.mesg.sensorMesg.data;
@@ -269,57 +287,88 @@ void controllerTask(void *arg)
         break; // e_mtype_sensor
 
       case e_mtype_backend:
+
         switch (qMesgRecv.mesg.backendMesg.mesgId)
         {
+        case e_msg_backend_next_IOTAPIcall_ms:
+        {
+          uint16_t newTimerValue;
+          if (qMesgRecv.mesg.backendMesg.valid)
+          {
+            newTimerValue = qMesgRecv.mesg.backendMesg.data32;
+          }
+          else
+          {
+            newTimerValue = 60000; // try again in a minute
+          }
+
+          // Restart timer
+          ESP_LOGI(LOG_TAG, "new timer value, data=%d, valid=%d", qMesgRecv.mesg.backendMesg.data32, qMesgRecv.mesg.backendMesg.valid);
+          xTimerChangePeriod(IOTAPITimer, newTimerValue / portTICK_PERIOD_MS, 0);
+          xTimerStart(IOTAPITimer, 0);
+        }
+        break;
+
+        case e_msg_backend_next_PROAPIcall_ms:
+          break;
+
         case e_msg_backend_actuators:
-          ESP_LOGI(LOG_TAG, "received e_msg_backend_actuators, data=%d, valid=%d", qMesgRecv.mesg.backendMesg.data, qMesgRecv.mesg.backendMesg.valid);
+        {
+          uint8_t newActuatorValue;
+          if (qMesgRecv.mesg.backendMesg.valid)
+          {
+            newActuatorValue = qMesgRecv.mesg.backendMesg.data16;
+          }
+          else
+          {
+            newActuatorValue = 0; // All actuators off
+          }
+
+          ESP_LOGI(LOG_TAG, "received e_msg_backend_actuators, data=%d, valid=%d", qMesgRecv.mesg.backendMesg.data16, qMesgRecv.mesg.backendMesg.valid);
 
           // send actuators/relay state to actuators tasks
-          if (qMesgRecv.mesg.backendMesg.data != actuators)
+          if (newActuatorValue != actuators)
           {
-            actuators = qMesgRecv.mesg.backendMesg.data;
-            actuatorsQMesg.data = qMesgRecv.mesg.backendMesg.data;
+            actuators = newActuatorValue;
+            actuatorsQMesg.data = newActuatorValue;
             actuatorsQueueSend(&actuatorsQMesg, 0);
           }
 
           // send actuators to display task
           displayQMesg.type = e_actuator;
-          displayQMesg.data.actuators = qMesgRecv.mesg.backendMesg.data;
+          displayQMesg.data.actuators = newActuatorValue;
           displayQMesg.valid = qMesgRecv.mesg.backendMesg.valid;
           displayQueueSend(&displayQMesg, 0);
-
-          // Restart timer
-          xTimerChangePeriod(IOTAPITimer, qMesgRecv.mesg.backendMesg.nextRequestInterval / portTICK_PERIOD_MS, 0);
-          xTimerStart(IOTAPITimer, 0);
-          break; // e_msg_backend_actuators
+        }
+        break; // e_msg_backend_actuators
 
         case e_msg_backend_act_delay:
-          ESP_LOGI(LOG_TAG, "received e_msg_backend_act_delay, nr=%d, data=%d",qMesgRecv.mesg.backendMesg.number, qMesgRecv.mesg.backendMesg.data);
+          ESP_LOGI(LOG_TAG, "received e_msg_backend_act_delay, nr=%d, data=%d", qMesgRecv.mesg.backendMesg.number, qMesgRecv.mesg.backendMesg.data16);
 
           // send delay information to display
           displayQMesg.type = e_delay;
           displayQMesg.number = qMesgRecv.mesg.backendMesg.number;
-          displayQMesg.data.compDelay = qMesgRecv.mesg.backendMesg.data;
+          displayQMesg.data.compDelay = qMesgRecv.mesg.backendMesg.data16;
           displayQMesg.valid = true;
           displayQueueSend(&displayQMesg, 0);
 
-          compDelay = qMesgRecv.mesg.backendMesg.data;
+          compDelay = qMesgRecv.mesg.backendMesg.data16;
           break; // e_msg_backend_act_delay
 
         case e_msg_backend_heartbeat:
-          ESP_LOGI(LOG_TAG, "received e_msg_backend_heartbeat, data=%d,%d", qMesgRecv.mesg.backendMesg.data>>8, qMesgRecv.mesg.backendMesg.data&255);
+          ESP_LOGI(LOG_TAG, "received e_msg_backend_heartbeat, data=%d,%d", qMesgRecv.mesg.backendMesg.data16 >> 8, qMesgRecv.mesg.backendMesg.data16 & 255);
           // send heartBeat-detected information to display
           displayQMesg.type = e_heartbeat;
-          displayQMesg.data.heartBeat = qMesgRecv.mesg.backendMesg.data;
+          displayQMesg.data.heartBeat = qMesgRecv.mesg.backendMesg.data16;
           displayQMesg.valid = qMesgRecv.mesg.backendMesg.valid;
           displayQueueSend(&displayQMesg, 0);
           break; // e_msg_backend_heartbeat
 
         case e_msg_backend_temp_setpoint:
-          ESP_LOGI(LOG_TAG, "received e_msg_backend_temp_setpoint, data=%d, valid=%d", qMesgRecv.mesg.backendMesg.data, qMesgRecv.mesg.backendMesg.valid);
+          ESP_LOGI(LOG_TAG, "received e_msg_backend_temp_setpoint, data=%d, valid=%d", qMesgRecv.mesg.backendMesg.data16, qMesgRecv.mesg.backendMesg.valid);
           // send temperature set-point information to display
           displayQMesg.type = e_setpoint;
-          displayQMesg.data.temperature = qMesgRecv.mesg.backendMesg.data;
+          displayQMesg.data.temperature = qMesgRecv.mesg.backendMesg.data16;
           displayQMesg.valid = qMesgRecv.mesg.backendMesg.valid;
           displayQueueSend(&displayQMesg, 0);
           break; // e_msg_backend_temp_setpoint
@@ -351,7 +400,7 @@ void controllerTask(void *arg)
 
       case e_mtype_wifi:
         char label;
-        ESP_LOGI(LOG_TAG, "received e_mtype_wifi (rssi=%d, status=%d)",qMesgRecv.mesg.WiFiMesg.rssi, qMesgRecv.mesg.WiFiMesg.wifiStatus);
+        ESP_LOGI(LOG_TAG, "received e_mtype_wifi (rssi=%d, status=%d)", qMesgRecv.mesg.WiFiMesg.rssi, qMesgRecv.mesg.WiFiMesg.wifiStatus);
 
         switch (qMesgRecv.mesg.WiFiMesg.wifiStatus)
         {
@@ -498,7 +547,7 @@ void initController(void)
   }
 
   // create task
-  r = xTaskCreatePinnedToCore(controllerTask, "controllerTask", 5 * 1024, NULL, 10, &controllerTaskHandle, 1);
+  r = xTaskCreatePinnedToCore(controllerTask, "controllerTask", 8 * 1024, NULL, 10, &controllerTaskHandle, 1);
 
   if (r != pdPASS)
   {

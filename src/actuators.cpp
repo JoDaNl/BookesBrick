@@ -165,7 +165,7 @@ static void actuatorsTask(void *arg)
       controllerMsg.type                    = e_mtype_backend;
       controllerMsg.mesg.backendMesg.mesgId = e_msg_backend_act_delay;
       controllerMsg.mesg.backendMesg.number = 0;
-      controllerMsg.mesg.backendMesg.data   = onDelaySec0;
+      controllerMsg.mesg.backendMesg.data16   = onDelaySec0;
       controllerQueueSend(&controllerMsg, 0);
     }
 
@@ -196,7 +196,7 @@ static void actuatorsTask(void *arg)
       controllerMsg.type                    = e_mtype_backend;
       controllerMsg.mesg.backendMesg.mesgId = e_msg_backend_act_delay;
       controllerMsg.mesg.backendMesg.number = 0;
-      controllerMsg.mesg.backendMesg.data   = offDelaySec0;
+      controllerMsg.mesg.backendMesg.data16   = offDelaySec0;
       controllerQueueSend(&controllerMsg, 0);
     }
 
@@ -226,7 +226,7 @@ static void actuatorsTask(void *arg)
       controllerMsg.type                    = e_mtype_backend;
       controllerMsg.mesg.backendMesg.mesgId = e_msg_backend_act_delay;
       controllerMsg.mesg.backendMesg.number = 1;
-      controllerMsg.mesg.backendMesg.data   = onDelaySec1;
+      controllerMsg.mesg.backendMesg.data16   = onDelaySec1;
       controllerQueueSend(&controllerMsg, 0);
     }
 
@@ -257,7 +257,7 @@ static void actuatorsTask(void *arg)
       controllerMsg.type                      = e_mtype_backend;
       controllerMsg.mesg.backendMesg.mesgId = e_msg_backend_act_delay;
       controllerMsg.mesg.backendMesg.number = 1;
-      controllerMsg.mesg.backendMesg.data   = offDelaySec1;
+      controllerMsg.mesg.backendMesg.data16   = offDelaySec1;
       controllerQueueSend(&controllerMsg, 0);   
     }
 
@@ -313,7 +313,7 @@ void initActuators(void)
   }
 
   // create task
-  r = xTaskCreatePinnedToCore(actuatorsTask, "actuatorsTask", 1 * 1024, NULL, 10, &actuatorsTaskHandle, 1);
+  r = xTaskCreatePinnedToCore(actuatorsTask, "actuatorsTask", 4 * 1024, NULL, 10, &actuatorsTaskHandle, 1);
 
   if (r != pdPASS)
   {

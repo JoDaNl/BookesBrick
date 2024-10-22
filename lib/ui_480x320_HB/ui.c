@@ -48,10 +48,6 @@ lv_obj_t * ui_messageContainer;
 lv_obj_t * ui_messageLabel;
 lv_obj_t * ui_timeContainer;
 lv_obj_t * ui_timeLabel;
-lv_obj_t * ui_gravityPanel;
-lv_obj_t * ui_gravityLabel;
-lv_obj_t * ui_gravityLabelDot;
-lv_obj_t * ui_gravityUnitLabel;
 lv_obj_t * ui_voltPanel;
 lv_obj_t * ui_voltLabel;
 lv_obj_t * ui_voltLabelDot;
@@ -67,6 +63,14 @@ lv_obj_t * ui_tempLabel;
 lv_obj_t * ui_tempLabelDot;
 lv_obj_t * ui_tempLabelSmall;
 lv_obj_t * ui_unitLabel;
+lv_obj_t * ui_gravityPanel;
+lv_obj_t * ui_gravityLabel;
+lv_obj_t * ui_gravityLabelDot;
+lv_obj_t * ui_gravityUnitLabel;
+lv_obj_t * ui_gravityPanel1;
+lv_obj_t * ui_gravityLabel1;
+lv_obj_t * ui_gravityLabelDot1;
+lv_obj_t * ui_gravityUnitLabel1;
 
 
 // SCREEN: ui_configurationScreen

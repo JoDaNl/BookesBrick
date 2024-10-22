@@ -89,12 +89,6 @@ void setup()
   initCommmunication();
   ESP_LOGI(LOG_TAG, "initCommunication done: %d, free: %d", ESP.getHeapSize(), ESP.getFreeHeap());
 
-#if (CFG_ENABLE_HYDROBRICK == true)
-  delay(100);
-  initHydroBrick();
-  ESP_LOGI(LOG_TAG, "initHydroBrick done: %d, free: %d", ESP.getHeapSize(), ESP.getFreeHeap());
-#endif
-
   delay(10);
   initController();
   ESP_LOGI(LOG_TAG, "initController done: %d, free: %d", ESP.getHeapSize(), ESP.getFreeHeap());
@@ -107,13 +101,20 @@ void setup()
   initActuators();
   ESP_LOGI(LOG_TAG, "initActuators done: %d, free: %d", ESP.getHeapSize(), ESP.getFreeHeap());
 
-  // terminate standard 'Arduino' task
+#if (CFG_ENABLE_HYDROBRICK == true)
   delay(10);
+  initHydroBrick();
+  ESP_LOGI(LOG_TAG, "initHydroBrick done: %d, free: %d", ESP.getHeapSize(), ESP.getFreeHeap());
+#endif
+
+  delay(10);
+  // terminate standard 'Arduino' task
   vTaskDelete(NULL);
 };
 
-void loop() {
-  // empty task loop
+void loop() 
+{
+  delay(100);
 };
 
 // end of file

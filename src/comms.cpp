@@ -8,16 +8,17 @@
 #include <Arduino.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
-//#include <WiFiClientSecure.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
-
 #if (CFG_DISPLAY_TIME == true)
 #include <ESP32Time.h>
 #endif
 #include <preferences.h>
 #include "controller.h"
 #include "comms.h"
+#if (CFG_ENABLE_HYDROBRICK == true)
+#include "hydrobrick.h"
+#endif
 
 #define LOG_TAG "COMMS"
 
@@ -63,8 +64,6 @@ static bool rtcValid;
 
 static void startWiFi()
 {
-  bool status;
-
   if (config.SSID.length() > 1 && config.passwd.length() > 1)
   {
     ESP_LOGI(LOG_TAG, "Connecting to WIFI");
@@ -72,20 +71,20 @@ static void startWiFi()
     ESP_LOGI(LOG_TAG, "  SSID=%s", config.SSID.c_str());
     ESP_LOGI(LOG_TAG, "  passwd=%s", config.passwd.c_str());
 
+    // Start WIFI
+    // Important : set modem sleep mode ON. This allows concurrent use of BLE
+    //             If not than the system crashes !
     WiFi.setHostname(config.hostname.c_str());
     WiFi.mode(WIFI_STA);
     WiFi.setAutoReconnect(true);
-    WiFi.setSleep(false);
+    WiFi.setSleep(true);
     WiFi.begin(config.SSID, config.passwd);
   }
   else
   {
     ESP_LOGE(LOG_TAG, "NO VALID WIFI CONFIGURATION");
   }
-}
 
-static void stopWiFi(void)
-{
 }
 
 // ============================================================================
@@ -100,7 +99,6 @@ static void callBierBotIOTAPI(uint16_t temperature)
   uint32_t nextTempReqMs;
   controllerQItem_t controllerMesg;
   bool validResponse;
-  bool status;
 
   const char key_epower_0_state[] = "epower_0_state";
   const char key_epower_1_state[] = "epower_1_state";
@@ -110,7 +108,8 @@ static void callBierBotIOTAPI(uint16_t temperature)
   // Default: assume we cannot receive actuator information
   // Note that when a brick is not part of a device we will also receive no actuator information
   actuatorsValid = false;
-
+  nextTempReqMs = 0;
+  
   snprintf(URL, urlBufSize, "%s%s?apikey=%s&type=%s&brand=%s&version=%s&chipid=%6x%6x&s_number_temp_0=%2.1f&s_number_temp_id_0=%d&a_bool_epower_0=%d&a_bool_epower_1=%d",
            CFG_COMM_BBURL_API_BASE,
            CFG_COMM_BBURL_API_IOT,
@@ -132,7 +131,7 @@ static void callBierBotIOTAPI(uint16_t temperature)
 
   // Use http 1.0 for streaming. See : https://arduinojson.org/v6/how-to/use-arduinojson-with-httpclient/
   http.useHTTP10(true);
-  status = http.begin(URL);
+  http.begin(URL);
 
   // See : https://www.arduino.cc/reference/en/libraries/wifi/client.connect/
   // http.begin(client, "brewbricks.com", 80, "/api/iot/v1?apikey=2vOfOwLP4szFrQTo1qLU&type=bookesbrick&brand=bierbot&version=0.2&chipid=1cf20ab865e4&s_number_temp_0=0.0&s_number_temp_id_0=0&a_bool_epower_0=0&a_bool_epower_1=0", false);
@@ -149,6 +148,7 @@ static void callBierBotIOTAPI(uint16_t temperature)
     if (deserialisationError)
     {
       ESP_LOGE(LOG_TAG, "API deserializeJson() failed: %s", deserialisationError.f_str());
+      ESP_LOGE(LOG_TAG, "URL: %s", URL);
     }
     else
     {
@@ -178,7 +178,7 @@ static void callBierBotIOTAPI(uint16_t temperature)
 
       updatedActuator = jsonResponseDoc[key_epower_1_state].as<uint8_t>();
       actuators = actuators | (updatedActuator & 1) << 1;
-      ESP_LOGI(LOG_TAG, "Set relay 1 to  : %dn", updatedActuator);
+      ESP_LOGI(LOG_TAG, "Set relay 1 to  : %d", updatedActuator);
 
       actuatorsValid = true;
     }
@@ -191,10 +191,6 @@ static void callBierBotIOTAPI(uint16_t temperature)
     if (jsonResponseDoc.containsKey(key_next_request_ms))
     {
       nextTempReqMs = jsonResponseDoc[key_next_request_ms].as<long>();
-    }
-    else
-    {
-      nextTempReqMs = 60 * 1000; // one minute
     }
 
     // get 'usedfordevices' which is needed in te PROAPI call
@@ -222,8 +218,14 @@ static void callBierBotIOTAPI(uint16_t temperature)
   // Send actuator info to controller
   controllerMesg.type = e_mtype_backend;
   controllerMesg.mesg.backendMesg.mesgId = e_msg_backend_actuators;
-  controllerMesg.mesg.backendMesg.data = actuators;
-  controllerMesg.mesg.backendMesg.nextRequestInterval = nextTempReqMs;
+  controllerMesg.mesg.backendMesg.data16 = actuators;
+  controllerMesg.mesg.backendMesg.valid = actuatorsValid;
+  controllerQueueSend(&controllerMesg, 0);
+
+  // Send next request time to controller
+  controllerMesg.type = e_mtype_backend;
+  controllerMesg.mesg.backendMesg.mesgId = e_msg_backend_next_IOTAPIcall_ms;
+  controllerMesg.mesg.backendMesg.data32 = nextTempReqMs;
   controllerMesg.mesg.backendMesg.valid = actuatorsValid;
   controllerQueueSend(&controllerMesg, 0);
 }
@@ -322,7 +324,7 @@ static void callBierBotPROAPI(void)
 
   controllerMesg.type = e_mtype_backend;
   controllerMesg.mesg.backendMesg.mesgId = e_msg_backend_temp_setpoint;
-  controllerMesg.mesg.backendMesg.data = setPointValue;
+  controllerMesg.mesg.backendMesg.data16 = setPointValue;
   controllerMesg.mesg.backendMesg.valid = setPointValid;
   controllerQueueSend(&controllerMesg, 0);
 
@@ -334,6 +336,13 @@ static void callBierBotPROAPI(void)
     controllerMesg.mesg.backendMesg.valid = true;
     controllerQueueSend(&controllerMesg, 0);
   }
+
+  // Send next request time to controller
+  controllerMesg.type = e_mtype_backend;
+  controllerMesg.mesg.backendMesg.mesgId = e_msg_backend_next_PROAPIcall_ms;
+  controllerMesg.mesg.backendMesg.data32 = 60 * 1000;
+  controllerMesg.mesg.backendMesg.valid = true;
+  controllerQueueSend(&controllerMesg, 0);  
 }
 #endif
 
@@ -434,15 +443,9 @@ static void getNetworkTime(void)
 
     ESP_LOGI(LOG_TAG, "heap before 2nd http.GET() : %d, free: %d", ESP.getHeapSize(), ESP.getFreeHeap());
 
-    ESP_LOGI(LOG_TAG, "--> 1");
     http.useHTTP10(true);
-    ESP_LOGI(LOG_TAG, "--> 2");
     http.setReuse(false);
-    ESP_LOGI(LOG_TAG, "--> 3");
-    //    client.setInsecure();
-    ESP_LOGI(LOG_TAG, "--> 4");
-
-    ESP_LOGI(LOG_TAG, "http.begin(), URL: %s", URL);
+    // client.setInsecure();
 
     if (http.begin(URL) == false)
     {
@@ -450,9 +453,7 @@ static void getNetworkTime(void)
     }
     else
     {
-      ESP_LOGI(LOG_TAG, "--> 5");
       getStatus = http.GET();
-      ESP_LOGI(LOG_TAG, "--> 6");
 
       if (getStatus == HTTP_CODE_OK)
       {
@@ -508,231 +509,6 @@ static void getNetworkTime(void)
   return;
 }
 
-#ifdef TWO
-
-void readResponse(WiFiClientSecure *client)
-{
-  unsigned long timeout = millis();
-  while (client->available() == 0)
-  {
-    if (millis() - timeout > 5000)
-    {
-      Serial.println(">>> Client Timeout !");
-      client->stop();
-      return;
-    }
-  }
-
-  // Read all the lines of the reply from server and print them to Serial
-  while (client->available())
-  {
-    String line = client->readStringUntil('\r');
-    Serial.print(line);
-  }
-
-  Serial.printf("\nClosing connection\n\n");
-}
-
-static WiFiClientSecure client;
-
-static void getNetworkTime2(void)
-{
-  const bool hours24Mode = true;
-  // HTTPClient http; // TEST (as it was static declared in the module)
-
-  const char *server = "api.ipify.org";
-  const char *getExternIPURL = "https://api.ipify.org/?format=json";
-
-  const char *keyExternalIP = "ip";
-  const char *externalIPAdress = NULL; // NULL is unknown IP-address
-
-  const char *getTimeAPIURLBase = "https://timeapi.io/api/Time/current/ip?ipAddress=";
-  const char *keyHour = "hour";
-  const char *keyMinute = "minute";
-  const char *keyMilliSec = "milliSeconds";
-  const char *keySeconds = "seconds";
-  const char *keyDay = "day";
-  const char *keyMonth = "month";
-  const char *keyYear = "year";
-
-  int getStatus;
-  DeserializationError deserialisationError;
-
-  int hour;
-  int min;
-  int sec;
-  int day;
-  int month;
-  int year;
-
-  controllerQItem_t controllerMesg;
-
-  // See : https://randomnerdtutorials.com/esp32-https-requests/
-  // See : https://raw.githubusercontent.com/RuiSantosdotme/Random-Nerd-Tutorials/master/Projects/ESP32/ESP32_HTTPS/ESP32_WiFiClientSecure_No_Certificate/ESP32_WiFiClientSecure_No_Certificate.ino
-
-  ESP_LOGV(LOG_TAG, "getNetworkTime2()");
-
-  rtcValid = false;
-
-  // attempt to connect to Wifi network:
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    Serial.print(".");
-    // wait 1 second for re-trying
-    delay(1000);
-  }
-
-  ESP_LOGI(LOG_TAG, "heap before 1st http.GET() : %d, free: %d\n", ESP.getHeapSize(), ESP.getFreeHeap());
-
-  client.setInsecure();
-
-  if (!client.connect(server, 443))
-  {
-    ESP_LOGE(LOG_TAG, "client.connect() failed for server: %s", server);
-  }
-  else
-  {
-    ESP_LOGI(LOG_TAG, "client.connect() success for server : %s", server);
-
-    // Make a HTTP request:
-    client.println("GET /?format=json HTTP/1.0");
-    client.println("Host: api.ipify.org");
-    client.println("Connection: close");
-    client.println();
-
-    ESP_LOGI(LOG_TAG, "readResponse()");
-    readResponse(&client);
-
-    // while (client.connected())
-    // {
-    //   String line = client.readStringUntil('\n');
-    //   if (line == "\r")
-    //   {
-    //     Serial.println("headers received");
-    //     break;
-    //   }
-    // }
-
-    ESP_LOGI(LOG_TAG, "parse stream");
-
-    // Parse JSON object
-    deserialisationError = deserializeJson(jsonResponseDoc, client);
-
-    ESP_LOGI(LOG_TAG, "parsed stream");
-
-    if (deserialisationError)
-    {
-      ESP_LOGE(LOG_TAG, "API deserializeJson() failed: %s", deserialisationError.f_str());
-    }
-    else
-    {
-      // Extract values from server response
-      if (jsonResponseDoc.containsKey(keyExternalIP))
-      {
-        externalIPAdress = jsonResponseDoc[keyExternalIP];
-        ESP_LOGI(LOG_TAG, "external IP=%s", externalIPAdress);
-      }
-    }
-    // if there are incoming bytes available
-    // from the server, read them and print them:
-    // while (client.available())
-    // {
-    //   char c = client.read();
-    //   Serial.write(c);
-    // }
-  }
-
-  client.stop();
-
-#ifdef blabla
-  if (getStatus == HTTP_CODE_OK)
-  {
-
-    //    stream = http.getStreamPtr();
-
-    // Parse JSON object
-    deserialisationError = deserializeJson(jsonResponseDoc, http.getStream());
-
-    if (deserialisationError)
-    {
-      ESP_LOGE(LOG_TAG, "API deserializeJson() failed: %s", deserialisationError.f_str());
-    }
-    else
-    {
-      // Extract values from server response
-      if (jsonResponseDoc.containsKey(keyExternalIP))
-      {
-        externalIPAdress = jsonResponseDoc[keyExternalIP];
-        ESP_LOGI(LOG_TAG, "external IP=%s", externalIPAdress);
-      }
-    }
-  }
-  else
-  {
-    ESP_LOGE(LOG_TAG, "HTTP.get(getExternIPURL) failed");
-  }
-
-  ESP_LOGI(LOG_TAG, "heap after 1st http.GET() : %d, free: %d\n", ESP.getHeapSize(), ESP.getFreeHeap());
-
-  http.end();
-
-  if (externalIPAdress != NULL)
-  {
-    snprintf(URL, urlBufSize, "%s%s", getTimeAPIURLBase, externalIPAdress);
-
-    ESP_LOGI(LOG_TAG, "heap before 2nd http.GET() : %d, free: %d\n", ESP.getHeapSize(), ESP.getFreeHeap());
-
-    http.useHTTP10(true);
-    http.begin(URL);
-    getStatus = http.GET();
-    ESP_LOGI(LOG_TAG, "GET 3");
-
-    if (getStatus == HTTP_CODE_OK)
-    {
-      // Parse JSON object
-      deserialisationError = deserializeJson(jsonResponseDoc, http.getStream());
-
-      if (deserialisationError)
-      {
-        ESP_LOGE(LOG_TAG, "API deserializeJson() failed: %s", deserialisationError.f_str());
-      }
-      else
-      {
-        // Extract values from server response
-        hour = jsonResponseDoc[keyHour].as<int>();
-        min = jsonResponseDoc[keyMinute].as<int>();
-        sec = jsonResponseDoc[keySeconds].as<int>();
-        day = jsonResponseDoc[keyDay].as<int>();
-        month = jsonResponseDoc[keyMonth].as<int>();
-        year = jsonResponseDoc[keyYear].as<int>();
-
-        ESP_LOGD(LOG_TAG, "TIME=%02d:%02d:%02d", hour, min, sec);
-        ESP_LOGD(LOG_TAG, "DATE=%4d:%02d:%02d", year, month, day);
-
-        rtc.setTime(sec, min, hour, day, month, year, 0);
-        rtcValid = true;
-      }
-    }
-    else
-    {
-      ESP_LOGE(LOG_TAG, "HTTP.get(getTimeAPIURLBase) failed: %d", getStatus);
-    }
-
-    http.end();
-  }
-#endif
-
-  controllerMesg.type = e_mtype_backend;
-  controllerMesg.mesg.backendMesg.mesgId = e_msg_backend_time_updated;
-  controllerMesg.valid = rtcValid;
-  controllerMesg.mesg.controlMesg.data = ((rtc.getHour(hours24Mode) & 0xFF) << 8) | (rtc.getMinute() & 0xFF);
-  controllerQueueSend(&controllerMesg, 0);
-
-  return;
-}
-
-#endif
-
 #endif
 
 // ============================================================================
@@ -743,6 +519,7 @@ static void communicationTask(void *arg)
 {
   uint16_t r;
   commsQueueItem_t message;
+  hydroQueueItem_t hydroMessage;
 
   printf("Heap Size (initWiFi 4): %d, free: %d", ESP.getHeapSize(), ESP.getFreeHeap());
 
@@ -760,16 +537,16 @@ static void communicationTask(void *arg)
         callBierBotIOTAPI(message.temperature_x10);
         break;
       case e_type_comms_proapi:
-        //        callBierBotPROAPI();
+        callBierBotPROAPI();
         break;
 #if (CFG_ENABLE_HYDROBRICK == true)
       case e_type_comms_hydrobrick:
         break;
-        // callHydroAPI(message.temperature_x10, message.SG_x1000, message.battteryLevel_x1000);
+        hydroMessage.mesgId = e_msg_hydro_cmd_get_reading;
+        hydroQueueSend(&hydroMessage, 0);
         break;
 #endif
       case e_type_comms_ntp:
-        // printf("[COMM] received e_type_comms_ntp\n");
         getNetworkTime();
         break;
       }
@@ -811,6 +588,11 @@ void initCommmunication(void)
 
   // SETUP JSON FILTER DOC
   initPROAPIFilterDocs();
+
+#if (CFG_ENABLE_HYDROBRICK == true)
+  ESP_LOGI(LOG_TAG, "init HydroBrick");
+  initHydroBrick();
+#endif 
 
   communicationQueue = xQueueCreate(4, sizeof(commsQueueItem_t));
   if (communicationQueue == 0)

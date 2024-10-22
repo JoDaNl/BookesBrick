@@ -21,13 +21,12 @@ static QueueHandle_t hydroQueue = NULL;
 // Task handle
 static TaskHandle_t hydroTaskHandle = NULL;
 
+// UUIDs
 static NimBLEUUID HDhydrometerService(HDhydrometerServiceUUID);
 static NimBLEUUID HDhydrometerCharacteristic(HDhydrometerCharacteristicID);
 
 static NimBLEScan *pScan = NimBLEDevice::getScan();
 static NimBLERemoteCharacteristic *pRemoteCharacteristic = NULL;
-
-// static NimBLEAdvertisedDevice *pHydroBrickDevice = NULL;
 
 static bool hydroBrickDeviceValid;
 static NimBLEAdvertisedDevice hydroBrickDevice;
@@ -35,9 +34,9 @@ static NimBLEAdvertisedDevice hydroBrickDevice;
 static NimBLEClient *pHydroBrickClient = NULL;
 
 static hydrometerDataBytes_t hydrometerDataBytes;
+static bool hydrometerDataValid;
 
 static uint8_t hydroBrickAddressArray[] = {0xA2, 0x4B, 0xED, 0x2B, 0xCC, 0x4B};
-
 static NimBLEAddress hydroBrickAddress(hydroBrickAddressArray, true);
 
 // ========================================================================
@@ -56,10 +55,10 @@ static uint16_t angleToSG(uint16_t angle_x100)
 
 static void initBLE(void)
 {
-  ESP_LOGI(LOG_TAG, "init BLE");
+  ESP_LOGI(LOG_TAG, "start BLE");
 
   printf("Heap Size 1: %d, free: %d\n", ESP.getHeapSize(), ESP.getFreeHeap());
-  NimBLEDevice::init("");
+  NimBLEDevice::init(CFG_COMM_DEVICE_TYPE);
   printf("Heap Size 2: %d, free: %d\n", ESP.getHeapSize(), ESP.getFreeHeap());
   NimBLEDevice::setSecurityAuth(/*BLE_SM_PAIR_AUTHREQ_BOND | BLE_SM_PAIR_AUTHREQ_MITM |*/ BLE_SM_PAIR_AUTHREQ_SC);
   NimBLEDevice::setPower(ESP_PWR_LVL_P9); // +9db
@@ -68,24 +67,24 @@ static void initBLE(void)
   pHydroBrickClient = BLEDevice::createClient();
 }
 
-static void deInitBLE(void)
+static void stopBLE(void)
 {
-  ESP_LOGI(LOG_TAG, "de-init BLE");
+  ESP_LOGI(LOG_TAG, "stop BLE");
 
-  pScan->stop();
+//   pScan->stop();
   if (pHydroBrickClient != NULL)
   {
     pHydroBrickClient->disconnect();
   }
 
-  NimBLEDevice::deinit(true);
+//  NimBLEDevice::deinit(true);
 }
 
-static void cleanUp(void)
-{
-  pScan->stop();
-  pHydroBrickClient->disconnect();
-}
+// static void cleanUp(void)
+// {
+//   pScan->stop();
+//   pHydroBrickClient->disconnect();
+// }
 
 // ========================================================================
 // call-back functions
@@ -234,8 +233,8 @@ void scanForHydroBrick(void)
 
   hydroBrickDeviceValid = false;
 
+  // start scanning for 10 seconds
   pScan->start(10);
-  //  pScan->start(0, scanEndCallback);
 
   ESP_LOGI(LOG_TAG, "scanning done");
 }
@@ -281,6 +280,7 @@ void readService(void)
           // printf("0x%02X,", value[i]);
           // copy payload into union to form correct data-structure
           hydrometerDataBytes.bytes[i] = value[i];
+          hydrometerDataValid = true;
         }
         // printf("\n");
       }
@@ -377,7 +377,11 @@ void hydrometerTask(void *arg)
 
       case e_msg_hydro_evt_timeout:
         ESP_LOGV(LOG_TAG, "qmesg = e_msg_hydro_evt_timeout");
-        next_state = state_timeout;
+//        next_state = state_timeout;
+        break;
+
+      case e_msg_hydro_unknown:
+        ESP_LOGE(LOG_TAG, "unknown message received");
         break;
       }
     }
@@ -393,6 +397,7 @@ void hydrometerTask(void *arg)
     {
     case state_idle:
       //        next_state = state_idle;
+      hydrometerDataValid = false;
       break;
 
     case state_start_scan:
@@ -429,11 +434,14 @@ void hydrometerTask(void *arg)
       break;
 
     case state_result:
+
+      stopBLE();
+      
       switch (scanMode)
       {
       case e_scan_for_registered_brick:
       {
-        controllerQMesg.valid = !timeOutOccurred;
+        controllerQMesg.valid = hydrometerDataValid;
         controllerQMesg.type = e_mtype_hydro;
         controllerQMesg.mesg.hydroMesg.mesgId = e_cmsg_hydro_reading;
 
@@ -457,6 +465,7 @@ void hydrometerTask(void *arg)
         controllerQueueSend(&controllerQMesg, 0);
       }
       break;
+
       case e_scan_for_all_bricks:
       {
         ESP_LOGI(LOG_TAG, "Number of HydroBricks discovered : %d", scannedBricks.number);
@@ -510,7 +519,7 @@ void initHydroBrick(void)
   }
 
   // Create task (must be on CORE 0 for NimBLE to function properly)
-  r = xTaskCreatePinnedToCore(hydrometerTask, "hydrometerTask", 10 * 1024, NULL, 16, &hydroTaskHandle, 0);
+  r = xTaskCreatePinnedToCore(hydrometerTask, "hydrometerTask", 24 * 1024, NULL, 16, &hydroTaskHandle, 0);
 
   if (r != pdPASS)
   {

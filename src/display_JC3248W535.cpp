@@ -106,7 +106,8 @@ void initLVGL()
 #if defined(DIRECT_MODE) && (defined(CANVAS) || defined(RGB_PANEL))
   disp_draw_buf = (lv_color_t *)gfx->getFramebuffer();
 #else  // !(defined(DIRECT_MODE) && (defined(CANVAS) || defined(RGB_PANEL)))
-  disp_draw_buf = (lv_color_t *)heap_caps_malloc(bufSize * 2, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+//  disp_draw_buf = (lv_color_t *)heap_caps_malloc(bufSize * 2, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+  disp_draw_buf = (lv_color_t *)heap_caps_malloc(bufSize * 2, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
   if (!disp_draw_buf)
   {
     // remove MALLOC_CAP_INTERNAL flag try again

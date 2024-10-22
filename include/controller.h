@@ -72,7 +72,9 @@ typedef enum
     e_msg_backend_heartbeat,
     e_msg_backend_temp_setpoint,
     e_msg_backend_device_name,
-    e_msg_backend_time_update
+    e_msg_backend_time_update,
+    e_msg_backend_next_IOTAPIcall_ms,
+    e_msg_backend_next_PROAPIcall_ms
 } controllerQBackendMesgType_t;
 
 typedef struct 
@@ -80,8 +82,8 @@ typedef struct
   controllerQBackendMesgType_t mesgId;
   bool valid;
   uint8_t number;
-  int16_t data;
-  uint32_t nextRequestInterval;
+  int16_t data16;
+  uint32_t data32;
   String * stringPtr;
 } controllerQBackendMesg_t;
 
