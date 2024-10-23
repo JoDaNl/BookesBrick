@@ -1,7 +1,7 @@
 
 // See: https://forum.arduino.cc/t/arduino-and-ble-on-esp32-as-server-and-client-combined-using-nimble/1151247
 
-#if (CFG_ENABLE_HYDROBRICK == true)
+#if (CFG_HYDRO_ENABLE == true)
 
 #include <Arduino.h>
 #include "config.h"
@@ -162,7 +162,7 @@ class advertisedDeviceCallbacks : public NimBLEAdvertisedDeviceCallbacks
       case e_scan_for_all_bricks:
       {
         ESP_LOGD(LOG_TAG, "HydroBrick found");
-        if (scannedBricks.number < CFG_MAX_NR_HYDROBRICKS - 1)
+        if (scannedBricks.number < CFG_HYDRO_MAX_NR_BRICKS-1)
         {
           scannedBricks.addresses[scannedBricks.number] = advertisedDevice->getAddress();
           scannedBricks.number++;
@@ -233,8 +233,8 @@ void scanForHydroBrick(void)
 
   hydroBrickDeviceValid = false;
 
-  // start scanning for 10 seconds
-  pScan->start(10);
+  // start scanning
+  pScan->start(CFG_HYDRO_BLE_SCAN_TIME_SEC);
 
   ESP_LOGI(LOG_TAG, "scanning done");
 }
@@ -510,11 +510,13 @@ int hydroQueueSend(hydroQueueItem_t *hydroQMesg, TickType_t xTicksToWait)
   return r;
 }
 
+
+
 void initHydroBrick(void)
 {
   int r;
 
-  ESP_LOGI(LOG_TAG, "init");
+  ESP_LOGI(LOG_TAG, "init Hydrobrick");
 
   initBLE();
 

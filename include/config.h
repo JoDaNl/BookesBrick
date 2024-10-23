@@ -31,8 +31,11 @@
 #define CFG_TEMP_SMOOTH_MAX_DEVIATION   10            // 1 degree * 10
 
 // HYDROBRICK
-// Note : CFG_ENABLE_HYDROBRICK is defined in the platformio.ini file
-#define CFG_MAX_NR_HYDROBRICKS (4)
+// CFG_HYDRO_ENABLE is defines in platformio.ini file
+#define CFG_HYDRO_MAX_NR_BRICKS         4
+#define CFG_HYDRO_BLE_SCAN_TIME_SEC     10
+#define CFG_HYDRO_RETRY_SEC             30
+#define CFG_HYDRO_NEXT_MEASUREMENT_SEC  900
 
 //=============================================
 
@@ -150,11 +153,22 @@ extern int WiFiQueueSend(WiFiQueueItem_t *, TickType_t);
 typedef struct configValues
 {
   bool inConfigMode;
+  // WIFI
   String SSID;
   String passwd;
+  String hostname;
+  // BierBot API
   String apiKey; 
   String proApiKey; 
-  String hostname;
+  //
+  bool degreesInCelcius;
+  uint16_t compressorDelaySec;
+
+  //
+  uint32_t hydroMAC;
+  float hydroSGCalibrationCurve;
+  float hydroTempCalibrationCurve;
+  //
 } configValues_t;
 
 extern configValues_t config;

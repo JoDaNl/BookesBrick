@@ -10,7 +10,9 @@
 
 typedef enum 
 {
+#if (CFG_HYDRO_ENABLE == true)  
     e_msg_timer_hydro,
+#endif    
     e_msg_timer_iotapi,
     e_msg_timer_proapi,
     e_msg_timer_ntp, 
@@ -132,13 +134,13 @@ typedef enum
 {
     e_cmsg_hydro_unknown,
     e_cmsg_hydro_reading,
-    e_cmsg_hydri_scanned_bricks
+    e_cmsg_hydro_scanned_bricks
 } controllerQHydroMesgType_t;
 
 typedef struct
 {
   uint8_t number;
-  uint8_t addresses[CFG_MAX_NR_HYDROBRICKS][6];
+  uint8_t addresses[CFG_HYDRO_MAX_NR_BRICKS][6];
 } hydrometerQScannedBricks_t;
 
 

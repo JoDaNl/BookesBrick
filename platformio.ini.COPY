@@ -96,7 +96,7 @@ build_flags =
 	-D'LV_CONF_PATH=${platformio.include_dir}/lv_conf.h'
 	-D CFG_DISPLAY_CYD_320x240=true
 	-D CFG_DISPLAY_TIME=true
-	-D CFG_ENABLE_HYDROBRICK=true
+	-D CFG_HYDRO_ENABLE=true
 	-D CFG_I2C_SDA=22
 	-D CFG_I2C_SCL=27
 	-D CORE_DEBUG_LEVEL=3
@@ -148,7 +148,7 @@ build_flags =
 	; Display configuration
 	-D CFG_DISPLAY_JC3248W535=true
 	-D CFG_DISPLAY_TIME=true
-;	-D CFG_ENABLE_HYDROBRICK=true	
+;	-D CFG_HYDRO_ENABLE=true	
   -D JC3248W535	
 	-D'LV_CONF_PATH=${platformio.include_dir}/lv_conf.h'
 	; Logging

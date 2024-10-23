@@ -5,10 +5,10 @@
 #include <NimBLEDevice.h>
 #include "config.h"
 
+// DO NOT CHANGE - USE SAME UUIDS AS IN HYDROBRICK PROJECT
 const char HDdeviceName                     [] = "HydroBrick";
 const char HDhydrometerServiceUUID          [] = "63875899-6490-4d1b-9f0a-abee8653282c";
 const char HDhydrometerCharacteristicID     [] = "35f14e74-c1ae-4153-9abb-938481aa24cf";
-
 
 typedef enum
 {
@@ -18,7 +18,7 @@ typedef enum
 
 typedef struct
 {
-  NimBLEAddress addresses[CFG_MAX_NR_HYDROBRICKS];
+  NimBLEAddress addresses[CFG_HYDRO_MAX_NR_BRICKS];
   uint8_t number;
 } hydrometerScannedBricks_t;
 

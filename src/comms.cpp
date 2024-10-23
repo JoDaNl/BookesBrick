@@ -13,10 +13,9 @@
 #if (CFG_DISPLAY_TIME == true)
 #include <ESP32Time.h>
 #endif
-#include <preferences.h>
 #include "controller.h"
 #include "comms.h"
-#if (CFG_ENABLE_HYDROBRICK == true)
+#if (CFG_HYDRO_ENABLE == true)
 #include "hydrobrick.h"
 #endif
 
@@ -124,7 +123,6 @@ static void callBierBotIOTAPI(uint16_t temperature)
            (actuators & 1),
            ((actuators >> 1) & 1));
 
-  ESP_LOGI(LOG_TAG, "---------------------------");
   ESP_LOGI(LOG_TAG, "API-url=%s", URL);
 
   validResponse = false;
@@ -259,6 +257,7 @@ static void callBierBotPROAPI(void)
   controllerQItem_t controllerMesg;
   bool validResponse;
 
+  setPointValue = 0;
   setPointValid = false;
   deviceNameQPtr = NULL; // We do not have an explicit valid flag for this pointer, as we can set it to NULL
 
@@ -434,8 +433,7 @@ static void getNetworkTime(void)
 #endif
 
   // TEST
-  externalIPAdress = "77.161.115.34";
-  char URL2[] = "https://timeapi.io/api/Time/current/ip?ipAddress=77.161.115.34";
+  externalIPAdress = "77.161.115.34"; // FIXME !!!
 
   if (externalIPAdress != NULL)
   {
@@ -517,9 +515,9 @@ static void getNetworkTime(void)
 
 static void communicationTask(void *arg)
 {
-  uint16_t r;
-  commsQueueItem_t message;
-  hydroQueueItem_t hydroMessage;
+  static uint16_t r;
+  static commsQueueItem_t message;
+  static hydroQueueItem_t hydroMessage;
 
   printf("Heap Size (initWiFi 4): %d, free: %d", ESP.getHeapSize(), ESP.getFreeHeap());
 
@@ -539,7 +537,7 @@ static void communicationTask(void *arg)
       case e_type_comms_proapi:
         callBierBotPROAPI();
         break;
-#if (CFG_ENABLE_HYDROBRICK == true)
+#if (CFG_HYDRO_ENABLE == true)
       case e_type_comms_hydrobrick:
         break;
         hydroMessage.mesgId = e_msg_hydro_cmd_get_reading;
@@ -589,7 +587,7 @@ void initCommmunication(void)
   // SETUP JSON FILTER DOC
   initPROAPIFilterDocs();
 
-#if (CFG_ENABLE_HYDROBRICK == true)
+#if (CFG_HYDRO_ENABLE == true)
   ESP_LOGI(LOG_TAG, "init HydroBrick");
   initHydroBrick();
 #endif 

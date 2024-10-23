@@ -15,7 +15,7 @@
 #include "actuators.h"
 #include "display.h"
 
-#if (CFG_ENABLE_HYDROBRICK == true)
+#if (CFG_HYDRO_ENABLE == true)
 #include "hydrobrick.h"
 #endif
 
@@ -106,7 +106,7 @@ void setup()
   initActuators();
   ESP_LOGI(LOG_TAG, "initActuators done: %d, free: %d", ESP.getHeapSize(), ESP.getFreeHeap());
 
-#if (CFG_ENABLE_HYDROBRICK == true)
+#if (CFG_HYDRO_ENABLE == true)
   delay(10);
   initHydroBrick();
   ESP_LOGI(LOG_TAG, "initHydroBrick done: %d, free: %d", ESP.getHeapSize(), ESP.getFreeHeap());

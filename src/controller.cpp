@@ -10,15 +10,9 @@
 #include "display.h"
 #include "controller.h"
 #include "comms.h"
-
-#if (CFG_ENABLE_HYDROBRICK == true)
-
-// EXPERIMENTAL include
-#include <esp_wifi.h>
-
+#if (CFG_HYDRO_ENABLE == true)
 #include "hydrobrick.h"
 #endif
-
 #if (CFG_DISPLAY_TIME == true)
 #include <ESP32Time.h>
 #endif
@@ -37,7 +31,7 @@ static uint32_t displayTimeTimeMS;
 static uint32_t IOTAPICallTimeMS;
 static uint32_t PROAPICallTimeMS;
 
-#if (CFG_ENABLE_HYDROBRICK == true)
+#if (CFG_HYDRO_ENABLE == true)
 static uint32_t hydroCallTimeMS;
 static TimerHandle_t hydroTimer;
 #endif
@@ -101,7 +95,7 @@ static void PROAPITimerCallback(TimerHandle_t timer)
   controllerQueueSend(&qmesg, 0);
 }
 
-#if (CFG_ENABLE_HYDROBRICK == true)
+#if (CFG_HYDRO_ENABLE == true)
 static void hydroTimerCallback(TimerHandle_t timer)
 {
   controllerQItem_t qmesg;
@@ -120,25 +114,16 @@ static void hydroTimerCallback(TimerHandle_t timer)
 
 void controllerTask(void *arg)
 {
-  float temp_sens = 0.0;
-  bool temp_error = false;
-
-  uint16_t nextReceiveTime;
-  bool heartbeatTimeout = false;
-
   controllerQItem_t qMesgRecv;
-  // static blinkLedQMesg_t      blinkLedQMesg;
   actuatorQueueItem_t actuatorsQMesg;
   displayQueueItem_t displayQMesg;
-  //  static WiFiQueueItem_t WiFIQMesg;
   commsQueueItem_t commsQMesg;
-
-#if (CFG_ENABLE_HYDROBRICK == true)
+#if (CFG_HYDRO_ENABLE == true)
   hydroQueueItem_t hydroQmesg;
 #endif
 
   uint8_t actuators = 0;
-  uint16_t compDelay = 0;
+  char label = ' ';
 
   printf("Heap Size (initController 4): %d, free: %d\n", ESP.getHeapSize(), ESP.getFreeHeap());
 
@@ -167,7 +152,7 @@ void controllerTask(void *arg)
   PROAPITimer = xTimerCreate("proapi", PROAPICallTimeMS / portTICK_PERIOD_MS, pdFAIL, 0, PROAPITimerCallback); // One-shot
   xTimerStart(PROAPITimer, 0);
 
-#if (CFG_ENABLE_HYDROBRICK == true)
+#if (CFG_HYDRO_ENABLE == true)
   hydroCallTimeMS = 4000; // initial time
   hydroTimer = xTimerCreate("hydro", hydroCallTimeMS / portTICK_PERIOD_MS, pdFALSE, 0, hydroTimerCallback);
   xTimerStart(hydroTimer, 0);
@@ -183,25 +168,13 @@ void controllerTask(void *arg)
       case e_mtype_controller:
         switch (qMesgRecv.mesg.controlMesg.mesgId)
         {
-#if (CFG_ENABLE_HYDROBRICK == true)
+#if (CFG_HYDRO_ENABLE == true)
         case e_msg_timer_hydro:
           // timer has triggered, we must now read the hydrometer
           ESP_LOGI(LOG_TAG, "e_msg_timer_hydro");
-
-          // EXPERIMENTAL : switch off wifi
-          // printf("Deinitialised Wifi 1\n");
-          // printf("Heap Size : %d, free: %d\n", ESP.getHeapSize(), ESP.getFreeHeap());
-          // esp_wifi_stop();
-          // esp_wifi_deinit();
-          // printf("Deinitialised Wifi 2\n");
-          // printf("Heap Size : %d, free: %d\n", ESP.getHeapSize(), ESP.getFreeHeap());
-
           hydroQmesg.mesgId = e_msg_hydro_cmd_get_reading;
           hydroQmesg.data = 0;
           hydroQueueSend(&hydroQmesg, 0);
-
-          // delay(5000);
-          // esp_wifi_start();
           break;
 #endif
         case e_msg_timer_iotapi:
@@ -283,6 +256,9 @@ void controllerTask(void *arg)
           displayQMesg.valid = qMesgRecv.valid;
           displayQueueSend(&displayQMesg, 0);
           break;
+        case e_msg_sensor_unknown:
+          ESP_LOGE(LOG_TAG, "received e_msg_sensor_unknown");
+          break;
         }
         break; // e_mtype_sensor
 
@@ -351,8 +327,6 @@ void controllerTask(void *arg)
           displayQMesg.data.compDelay = qMesgRecv.mesg.backendMesg.data16;
           displayQMesg.valid = true;
           displayQueueSend(&displayQMesg, 0);
-
-          compDelay = qMesgRecv.mesg.backendMesg.data16;
           break; // e_msg_backend_act_delay
 
         case e_msg_backend_heartbeat:
@@ -395,11 +369,14 @@ void controllerTask(void *arg)
           xTimerStart(NTPTimer, 0);
 
           break; // e_msg_backend_time_updated
+
+        case e_msg_backend_unknown:
+          ESP_LOGE(LOG_TAG, "received e_msg_backend_unknown");
+          break;
         }
         break; // e_mtype_backend
 
       case e_mtype_wifi:
-        char label;
         ESP_LOGI(LOG_TAG, "received e_mtype_wifi (rssi=%d, status=%d)", qMesgRecv.mesg.WiFiMesg.rssi, qMesgRecv.mesg.WiFiMesg.wifiStatus);
 
         switch (qMesgRecv.mesg.WiFiMesg.wifiStatus)
@@ -429,7 +406,7 @@ void controllerTask(void *arg)
         displayQueueSend(&displayQMesg, 0);
         break; // e_mtype_wifi
 
-#if (CFG_ENABLE_HYDROBRICK == true)
+#if (CFG_HYDRO_ENABLE == true)
       case e_mtype_hydro:
         switch (qMesgRecv.mesg.hydroMesg.mesgId)
         {
@@ -486,7 +463,19 @@ void controllerTask(void *arg)
           displayQueueSend(&displayQMesg, 0);
 
           break; // e_cmsg_hydro_reading
+
+          
+      case e_cmsg_hydro_scanned_bricks:
+        ESP_LOGE(LOG_TAG, "e_cmsg_hydro_scanned_bricks");
+        break;          
+
+
+      case e_cmsg_hydro_unknown:
+        ESP_LOGE(LOG_TAG, "e_cmsg_hydro_unknown");
+        break;          
         }
+
+
         break; // e_mtype_hydro
 #endif
       }

@@ -17,6 +17,7 @@ typedef enum displayQueueDataType
     e_display_text,
     e_specific_gravity,
     e_hb_temperature,
+    e_progress_tick,
     e_voltage
 } displayQueueDataType_t;
 

@@ -26,11 +26,22 @@ static lv_chart_series_t *ui_cool_serie;
 static lv_chart_series_t *ui_heat_serie;
 
 
-#if (CFG_ENABLE_HYDROBRICK == true)
+#if (CFG_HYDRO_ENABLE == true)
 const lv_color_t tempHBGraphColor = lv_color_make(0xFF, 0x80, 0x00);
 static lv_chart_series_t *ui_tempHB_serie;
 #endif
 
+// Timer for progressbars
+static TimerHandle_t progressBarTimer;
+
+static void progressBarTimerCallback(TimerHandle_t timer)
+{
+  displayQueueItem_t qmesg;
+
+  qmesg.type = e_progress_tick;
+  qmesg.valid = true;
+  displayQueueSend(&qmesg, 0);
+}
 
 
 // See : https://forum.lvgl.io/t/how-do-i-scroll-the-contents-of-a-lv-win-up-when-the-keyboard-pops-up-so-that-the-active-textarea-remains-in-view-using-lvgl8-1-0/6158
@@ -158,7 +169,7 @@ void displayTask(void *arg)
   uint16_t setPointx10 = 0;
   bool setPointx10Valid = false;
 
-#if (CFG_ENABLE_HYDROBRICK == true)
+#if (CFG_HYDRO_ENABLE == true)
   uint16_t tempHBx10 = 0;
   bool tempHBvalid = false;
 #endif  
@@ -168,8 +179,6 @@ void displayTask(void *arg)
   uint8_t actuator0 = 0;
   uint8_t actuator1 = 0;
 
-  bool heartbeatToggle = false;
-
   bool timeToggle = false;
   uint32_t tickCount = 0;
   uint32_t prevTickCount = 0;
@@ -177,7 +186,6 @@ void displayTask(void *arg)
   uint8_t timeMinutes;
 
   bool timeValid = false;
-  bool setpValid = false;
   lv_coord_t temp_value;
   lv_coord_t setp_value;
 
@@ -191,7 +199,7 @@ void displayTask(void *arg)
   ui_cool_serie = lv_chart_add_series(ui_temperatureChart, coolGraphColor, LV_CHART_AXIS_SECONDARY_Y);
   ui_heat_serie = lv_chart_add_series(ui_temperatureChart, heatGraphColor, LV_CHART_AXIS_SECONDARY_Y);
 
-#if (CFG_ENABLE_HYDROBRICK == true)
+#if (CFG_HYDRO_ENABLE == true)
   ui_tempHB_serie = lv_chart_add_series(ui_temperatureChart, tempHBGraphColor, LV_CHART_AXIS_PRIMARY_Y);
 #endif
 
@@ -201,6 +209,10 @@ void displayTask(void *arg)
 
   lv_obj_set_style_size(ui_temperatureChart, 0, LV_PART_INDICATOR); // set dot-size to 0
   lv_obj_add_event_cb(ui_temperatureChart, cb_chart_draw_event, LV_EVENT_DRAW_PART_BEGIN, NULL);
+
+  // Progress-bar timer, 1 second rithm, auto-reload
+  progressBarTimer = xTimerCreate("progressBar", 1000 / portTICK_PERIOD_MS, pdTRUE, 0, progressBarTimerCallback);
+  xTimerStart(progressBarTimer, 0);
 
   while (true)
   {
@@ -245,7 +257,7 @@ void displayTask(void *arg)
           lv_chart_set_next_value(ui_temperatureChart, ui_temp_serie, temp_value);
 
           // re-use temp_value for HydroBrick
-#if (CFG_ENABLE_HYDROBRICK == true)
+#if (CFG_HYDRO_ENABLE == true)
           temp_value = tempHBx10;
           if (tempHBvalid)
           {
@@ -298,7 +310,7 @@ void displayTask(void *arg)
             }
           }
 
-#if (CFG_ENABLE_HYDROBRICK == true)
+#if (CFG_HYDRO_ENABLE == true)
           y_count = lv_chart_get_point_count(ui_temperatureChart);
           y_array = lv_chart_get_y_array(ui_temperatureChart, ui_tempHB_serie);
 
@@ -347,7 +359,7 @@ void displayTask(void *arg)
         break;
 
       case e_actuator:
-        ESP_LOGI(LOG_TAG, "e_actuator=%d", qMesg.data.actuators);
+        ESP_LOGV(LOG_TAG, "e_actuator=%d", qMesg.data.actuators);
 
         if (qMesg.valid)
         {
@@ -399,12 +411,11 @@ void displayTask(void *arg)
 
       case e_delay:
         // only use compressor delay for actuator '0'
-        if (qMesg.number == 0)
-        {
-          compDelayPerc = 100 - (100 * qMesg.data.compDelay) / CFG_RELAY0_ON_DELAY;
-          // printf("[DISP] compressor-delay=%d sec, %d\%\n",qMesg.data.compDelay,compDelayPerc);
-          lv_bar_set_value(ui_coolBar, compDelayPerc, LV_ANIM_OFF);
-        }
+        // if (qMesg.number == 0)
+        // {
+        //   compDelayPerc = 100 - (100 * qMesg.data.compDelay) / CFG_RELAY0_ON_DELAY;
+        //   lv_bar_set_value(ui_coolBar, compDelayPerc, LV_ANIM_OFF);
+        // }
         break;
 
       case e_wifi:
@@ -541,7 +552,15 @@ void displayTask(void *arg)
         break;
 
 
-#if (CFG_ENABLE_HYDROBRICK == true)
+      case e_progress_tick:
+      {
+        ESP_LOGI(LOG_TAG, "e_progress_tick");
+        compDelayPerc = 100 - (100 * qMesg.data.compDelay) / CFG_RELAY0_ON_DELAY;
+        lv_bar_set_value(ui_coolBar, compDelayPerc, LV_ANIM_OFF);
+      }
+      break;
+
+#if (CFG_HYDRO_ENABLE == true)
         case e_specific_gravity:
           ESP_LOGI(LOG_TAG, " e_specific_gravity=%2.1f", qMesg.data.specificGravity / 1000.0);
           displayTemperature(qMesg.data.specificGravity, qMesg.valid, ui_gravityLabel, NULL, 1000, 9999);       

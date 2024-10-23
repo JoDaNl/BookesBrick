@@ -136,7 +136,7 @@ static void actuatorsTask(void *arg)
 
   actuatorActual0 = 0;
   actuatorActual1 = 0;
-
+  
   // Task loop
   while (true)
   {
