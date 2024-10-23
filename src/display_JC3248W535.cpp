@@ -154,7 +154,11 @@ void initLVGL()
 
     ui_init();
     lv_disp_load_scr(ui_mainScreen);
+    
+    // update once to prevent random bufer data after power up being displayed
+    updateLVGL(); 
 
+    // now switch on backlight
     pinMode(BACKLIGHT_PIN, OUTPUT);
     digitalWrite(BACKLIGHT_PIN, HIGH);
   }

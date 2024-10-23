@@ -88,8 +88,8 @@ static void cb_chart_draw_event(lv_event_t *e)
 
 void cb_clicked(lv_event_t *e)
 {
-  lv_event_code_t code = lv_event_get_code(e);
-  lv_obj_t *btn = lv_event_get_target(e);
+  // lv_event_code_t code = lv_event_get_code(e);
+  // lv_obj_t *btn = lv_event_get_target(e);
 }
 
 static void displayTemperature(float value, bool valid, lv_obj_t *label, lv_obj_t *labelSmall, float lowRange, float highRange)
@@ -584,7 +584,7 @@ void displayTask(void *arg)
       }
 
       // handle status text
-      if (~displayTextPersistent)
+      if (!displayTextPersistent)
       {
         if (displayTextTime == 0)
         {

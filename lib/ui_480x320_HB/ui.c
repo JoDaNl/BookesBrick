@@ -25,7 +25,6 @@ lv_obj_t * ui_coolLabel;
 lv_obj_t * ui_heatLabel;
 lv_obj_t * ui_coolBar;
 lv_obj_t * ui_heatBar;
-void ui_event_tempGraphPanel(lv_event_t * e);
 lv_obj_t * ui_tempGraphPanel;
 lv_obj_t * ui_temperatureChart;
 lv_obj_t * ui_statusContainer;
@@ -67,10 +66,6 @@ lv_obj_t * ui_gravityPanel;
 lv_obj_t * ui_gravityLabel;
 lv_obj_t * ui_gravityLabelDot;
 lv_obj_t * ui_gravityUnitLabel;
-lv_obj_t * ui_gravityPanel1;
-lv_obj_t * ui_gravityLabel1;
-lv_obj_t * ui_gravityLabelDot1;
-lv_obj_t * ui_gravityUnitLabel1;
 
 
 // SCREEN: ui_configurationScreen
@@ -99,14 +94,6 @@ lv_obj_t * ui____initial_actions0;
 ///////////////////// ANIMATIONS ////////////////////
 
 ///////////////////// FUNCTIONS ////////////////////
-void ui_event_tempGraphPanel(lv_event_t * e)
-{
-    lv_event_code_t event_code = lv_event_get_code(e);
-    lv_obj_t * target = lv_event_get_target(e);
-    if(event_code == LV_EVENT_CLICKED) {
-        cb_clicked(e);
-    }
-}
 
 ///////////////////// SCREENS ////////////////////
 

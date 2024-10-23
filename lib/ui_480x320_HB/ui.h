@@ -41,7 +41,6 @@ extern lv_obj_t * ui_coolLabel;
 extern lv_obj_t * ui_heatLabel;
 extern lv_obj_t * ui_coolBar;
 extern lv_obj_t * ui_heatBar;
-void ui_event_tempGraphPanel(lv_event_t * e);
 extern lv_obj_t * ui_tempGraphPanel;
 extern lv_obj_t * ui_temperatureChart;
 extern lv_obj_t * ui_statusContainer;
@@ -83,10 +82,6 @@ extern lv_obj_t * ui_gravityPanel;
 extern lv_obj_t * ui_gravityLabel;
 extern lv_obj_t * ui_gravityLabelDot;
 extern lv_obj_t * ui_gravityUnitLabel;
-extern lv_obj_t * ui_gravityPanel1;
-extern lv_obj_t * ui_gravityLabel1;
-extern lv_obj_t * ui_gravityLabelDot1;
-extern lv_obj_t * ui_gravityUnitLabel1;
 // SCREEN: ui_configurationScreen
 void ui_configurationScreen_screen_init(void);
 extern lv_obj_t * ui_configurationScreen;

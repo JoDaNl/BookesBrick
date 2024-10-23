@@ -379,6 +379,11 @@ void hydrometerTask(void *arg)
         ESP_LOGV(LOG_TAG, "qmesg = e_msg_hydro_evt_timeout");
 //        next_state = state_timeout;
         break;
+      
+      case e_msg_hydro_evt_device_disconnected:
+        ESP_LOGV(LOG_TAG, "qmesg = e_msg_hydro_evt_device_disconnected");
+        break;
+
 
       case e_msg_hydro_unknown:
         ESP_LOGE(LOG_TAG, "unknown message received");
@@ -445,14 +450,7 @@ void hydrometerTask(void *arg)
         controllerQMesg.type = e_mtype_hydro;
         controllerQMesg.mesg.hydroMesg.mesgId = e_cmsg_hydro_reading;
 
-        if (timeOutOccurred)
-        {
-          controllerQMesg.mesg.hydroMesg.data.reading.angle_x100 = 0;
-          controllerQMesg.mesg.hydroMesg.data.reading.temperature_x10 = 0;
-          controllerQMesg.mesg.hydroMesg.data.reading.batteryVoltage_x1000 = 0;
-          controllerQMesg.mesg.hydroMesg.data.reading.RSSI = 0;
-        }
-        else
+        if (hydrometerDataValid)
         {
           controllerQMesg.mesg.hydroMesg.data.reading.status = hydrometerDataBytes.data.status;
           controllerQMesg.mesg.hydroMesg.data.reading.angle_x100 = hydrometerDataBytes.data.angle_x100;
@@ -460,6 +458,15 @@ void hydrometerTask(void *arg)
           controllerQMesg.mesg.hydroMesg.data.reading.batteryVoltage_x1000 = hydrometerDataBytes.data.batteryVoltage_x1000;
           controllerQMesg.mesg.hydroMesg.data.reading.SG_x1000 = angleToSG(hydrometerDataBytes.data.angle_x100);
           controllerQMesg.mesg.hydroMesg.data.reading.RSSI = hydroBrickDevice.getRSSI();
+        }
+        else
+        {
+          controllerQMesg.mesg.hydroMesg.data.reading.status = 0;
+          controllerQMesg.mesg.hydroMesg.data.reading.angle_x100 = 0;
+          controllerQMesg.mesg.hydroMesg.data.reading.temperature_x10 = 0;
+          controllerQMesg.mesg.hydroMesg.data.reading.batteryVoltage_x1000 = 0;
+          controllerQMesg.mesg.hydroMesg.data.reading.SG_x1000 = 0;
+          controllerQMesg.mesg.hydroMesg.data.reading.RSSI = 0;
         }
 
         controllerQueueSend(&controllerQMesg, 0);

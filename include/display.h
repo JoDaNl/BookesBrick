@@ -66,6 +66,6 @@ extern int displayQueueSend(displayQueueItem_t *, TickType_t);
 extern void initDisplay(void);
 extern void initLVGL(void);
 extern void updateLVGL(void);
-
 extern void displayText(String *, displayMessageType_t, uint8_t);
+
 #endif

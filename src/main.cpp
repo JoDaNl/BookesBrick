@@ -39,11 +39,16 @@ configValues_t config;
 
 void setup()
 {
+  uint8_t serialCnt;
+
+  serialCnt = 0;
+
   Serial.begin(CFG_BAUDRATE);
 
-  while (!Serial) // wait for Serial to become available
+  while (!Serial && serialCnt < 10) // wait for Serial to become available
   {
     delay(100);
+    serialCnt++;
   }
 
   // Welcome message

@@ -446,16 +446,16 @@ void controllerTask(void *arg)
 
             hydroCallTimeMS = 30 * 1000;
 
-            if (qMesgRecv.mesg.hydroMesg.data.reading.status & battery_charging)
-            {
-              String *charge = new String("Charging");
-              displayText(charge, e_status_bar, 25);
-            }
-            else
-            {
-              String *angle = new String(qMesgRecv.mesg.hydroMesg.data.reading.batteryVoltage_x1000 / 1000.0);
-              displayText(angle, e_status_bar, 25);
-            }
+            // if (qMesgRecv.mesg.hydroMesg.data.reading.status & battery_charging)
+            // {
+            //   String *charge = new String("Charging");
+            //   displayText(charge, e_status_bar, 25);
+            // }
+            // else
+            // {
+            //   String *angle = new String(qMesgRecv.mesg.hydroMesg.data.reading.batteryVoltage_x1000 / 1000.0);
+            //   displayText(angle, e_status_bar, 25);
+            // }
           }
           else
           {
